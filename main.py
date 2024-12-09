@@ -145,17 +145,17 @@ def index():
 @app.route('/apply/<save>', methods=['POST'])
 def apply(save):
     load(save)
-    return f'Applied {save}'
+    return index()
 
 @app.route('/save', methods=['POST'])
 def save_current():
     save_name = request.form['save_name']
     save(save_name)
-    return 'Current parameters saved!'
+    return index()
 
 @app.route('/static/<path:filename>')
 def static_files(filename):
     return send_from_directory(get_absolute_path("static"), filename)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8080)
+    app.run(debug=False, port=8080)
