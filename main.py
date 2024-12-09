@@ -70,7 +70,7 @@ server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", server_port), disp)
 
 server_thread = Thread(target=osc_server_serve, daemon=True)
 server_thread.start()
-oscqs = OSCQueryService("test", http_port, server_port)
+oscqs = OSCQueryService("ParameterSaveStates", http_port, server_port)
 oscqs.advertise_endpoint(AVATAR_CHANGE_PARAMETER, access="readwrite")
 
 root = client._get_query_root()
@@ -91,9 +91,6 @@ def save(name):
 
     params = get_params()
     paramlist = [Parameter(key, value["VALUE"][0]) for key, value in params.items()]
-
-    for p in paramlist:
-        print(p)
 
     entry = {
         "name": name,
@@ -161,4 +158,4 @@ def static_files(filename):
     return send_from_directory(get_absolute_path("static"), filename)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=http_port)
+    app.run(debug=True, port=8080)
