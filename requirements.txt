@@ -1,2 +1,4 @@
 zeroconf
 requests
+flask
+python-osc

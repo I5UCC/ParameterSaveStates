@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Avatar Saves</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h1 class="text-center">Avatar Saves</h1>
+
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6 col-lg-4">
+                <form action="/save" method="post" class="card text-center">
+                    <div class="card-body">
+                        Save Name: 
+                        <input type="text" name="save_name" required class="form-control mt-3 mb-3">
+                        <button type="submit" class="btn btn-success">Save Current Avatar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="row justify-content-center">
+            {% for filename, save_name in saves %}
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <form action="/apply/{{filename}}" method="post" class="card text-center">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ save_name }}</h5>
+                            <button type="submit" class="btn btn-primary">Apply</button>
+                        </div>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

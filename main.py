@@ -11,6 +11,7 @@ import os
 from parameter import Parameter
 import json
 import dataclasses
+from flask import Flask, render_template, send_from_directory, request
 
 def get_absolute_path(relative_path) -> str:
     """
@@ -29,9 +30,11 @@ AVATAR_PARAMETERS_PREFIX = "/avatar/parameters/"
 AVATAR_CHANGE_PARAMETER = "/avatar/change"
 
 current_avatar = None
-osc_client = udp_client.SimpleUDPClient("127.0.0.1", "9000")
+osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
 http_port = get_open_tcp_port()
 server_port = get_open_udp_port()
+
+app = Flask(__name__)
 
 def osc_server_serve():
     server.serve_forever(2)
@@ -83,7 +86,7 @@ def get_params():
     # Access 0 is none
     return {key: value for key, value in params.items() if value["ACCESS"] == 3}
 
-def save():
+def save(name):
     global root, current_avatar
 
     params = get_params()
@@ -92,24 +95,26 @@ def save():
     for p in paramlist:
         print(p)
 
+    entry = {
+        "name": name,
+        "parameters": [dataclasses.asdict(p) for p in paramlist]
+    }
+
     logging.info("Saving parameters...")
     # save parameters to file
     with open(get_absolute_path(f"saves/{current_avatar}"), "w") as f:
-        json.dump([dataclasses.asdict(p) for p in paramlist], f, indent=4)
+        json.dump(entry, f, indent=4)
     logging.info("Parameters saved!")
 
 def load(load_from):
     global root, current_avatar
-
-    if load_from == current_avatar:
-        copy_to_current(load_from)
 
     load_from_path = get_absolute_path(f"saves/{load_from}")
 
     logging.info(f"Loading parameters from {load_from}...")
     with open(load_from_path, "r") as f:
         # load parameters from file into Paramter objects
-        paramlist = [Parameter(**p) for p in json.load(f)]
+        paramlist = [Parameter(**p) for p in json.load(f)["parameters"]]
     
     for p in paramlist:
         osc_client.send_message(f"{AVATAR_PARAMETERS_PREFIX}{p.name}", p.value)
@@ -129,3 +134,31 @@ def copy_to_current(copy_from):
     with open(current_avatar_path, "w") as f:
         json.dump(data, f, indent=4)
     logging.info("Parameters copied!")
+
+@app.route('/')
+def index():
+    saves = []
+    for filename in os.listdir(get_absolute_path("saves")):
+        with open(get_absolute_path(f"saves/{filename}"), "r") as f:
+            data = json.load(f)
+        save_name = data.get('name', filename)  # Use the 'name' field if it exists, otherwise use the filename
+        saves.append((filename, save_name))
+    return render_template('index.html', saves=saves)
+
+@app.route('/apply/<save>', methods=['POST'])
+def apply(save):
+    load(save)
+    return f'Applied {save}'
+
+@app.route('/save', methods=['POST'])
+def save_current():
+    save_name = request.form['save_name']
+    save(save_name)
+    return 'Current parameters saved!'
+
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory(get_absolute_path("static"), filename)
+
+if __name__ == '__main__':
+    app.run(debug=True, port=http_port)
