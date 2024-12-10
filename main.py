@@ -161,4 +161,4 @@ def static_files(filename):
     return send_from_directory(get_absolute_path("static"), filename)
 
 if __name__ == '__main__':
-    app.run(debug=False, port=8080)
+    app.run(debug=False, port=5000)

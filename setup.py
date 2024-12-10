@@ -13,5 +13,5 @@ setup(
     version="1.0",
     description="ParameterSaveStates",
     options={"build_exe": build_exe_options},
-    executables=[Executable("main.py", target_name="ParameterSaveStates.exe", base=False), Executable("main.py", target_name="ParameterSaveStates_NoConsole.exe", base="Win32GUI")],
+    executables=[Executable("app.py", target_name="ParameterSaveStates.exe", base=False), Executable("app.py", target_name="ParameterSaveStates_NoConsole.exe", base="Win32GUI")],
 )
