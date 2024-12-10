@@ -21,7 +21,7 @@ def get_absolute_path(relative_path) -> str:
     Returns:
         str: Absolute path
     """
-    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(sys.executable)))
     return os.path.join(base_path, relative_path)
 
 logging.basicConfig(level=logging.DEBUG if len(sys.argv) > 1 else logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%d-%b-%y %H:%M:%S', handlers=[logging.StreamHandler(), logging.FileHandler(get_absolute_path("log.log"))])
@@ -29,12 +29,15 @@ logging.basicConfig(level=logging.DEBUG if len(sys.argv) > 1 else logging.INFO, 
 AVATAR_PARAMETERS_PREFIX = "/avatar/parameters/"
 AVATAR_CHANGE_PARAMETER = "/avatar/change"
 
+if not os.path.exists(get_absolute_path("saves")):
+    os.makedirs(get_absolute_path("saves"))
+
 current_avatar = None
 osc_client = udp_client.SimpleUDPClient("127.0.0.1", 9000)
 http_port = get_open_tcp_port()
 server_port = get_open_udp_port()
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=get_absolute_path("templates"))
 
 def osc_server_serve():
     server.serve_forever(2)

@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Avatar Saves</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -21,9 +20,9 @@
             </div>
         </div>
         
-        <div class="row justify-content-center">
+        <div class="row justify-content-center list-group">
             {% for filename, save_name in saves %}
-                <div class="col-md-6 col-lg-4 mb-3">
+                <div class="col-md-6 col-lg-4 mb-3 list-group-item">
                     <form action="/apply/{{filename}}" method="post" class="card text-center">
                         <div class="card-body">
                             <h5 class="card-title">{{ save_name }}</h5>
