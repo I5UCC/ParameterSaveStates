@@ -2,38 +2,64 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+        }
+        .card {
+            background-color: #1e1e1e;
+            border-color: #333;
+            color: #ffffff;
+        }
+        .form-control {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border-color: #333;
+        }
+        .btn {
+            background-color: #333;
+            border-color: #555;
+            color: #ffffff;
+        }
+        h5.card-title {
+            color: #ffffff;
+        }
+    </style>
 </head>
-<body class="bg-light">
-    <div class="container mt-5">
-        <div class="row justify-content-center mt-5">
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center my-5">
             <div class="col-md-6 col-lg-4">
-                <form action="/save" method="post" class="card text-center">
-                    <div class="card-body">
-                        Save Name: 
-                        <input type="text" name="save_name" required class="form-control mt-3 mb-3">
-                        <button type="submit" class="btn btn-success">Save Current Avatar</button>
+                <div class="card shadow-sm">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Save Current Avatar</h5>
+                        <form action="/save" method="post">
+                            <input type="text" name="save_name" required class="form-control mt-3 mb-3" placeholder="Enter Save Name">
+                            <button type="submit" class="btn btn-success w-100">Save</button>
+                        </form>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
         
-        <div class="row justify-content-center">
+        <div class="row">
             {% for filename, save_name in saves %}
-                <div class="col-md-6 col-lg-4 mb-3">
-                    <form action="/apply/{{filename}}" method="post" class="card text-center">
-                        <div class="card-body">
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body text-center">
                             <h5 class="card-title">{{ save_name }}</h5>
-                            <button type="submit" class="btn btn-primary">Apply</button>
+                            <form action="/apply/{{filename}}" method="post">
+                                <button type="submit" class="btn btn-primary w-100">Apply</button>
+                            </form>
                         </div>
-                    </form>
+                    </div>
                 </div>
             {% endfor %}
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
