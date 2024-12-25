@@ -1,4 +1,0 @@
-zeroconf==0.119.0
-requests
-flask
-python-osc
