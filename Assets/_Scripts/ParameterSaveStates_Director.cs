@@ -2,21 +2,14 @@
 using UnityEngine;
 using UnityEngine.UI;
 using Valve.VR;
-using IniParser;
-using IniParser.Model;
-using System.Threading;
 using VRC.OSCQuery;
 using OscCore;
 using BlobHandles;
 using System.Net;
 using System.Net.Sockets;
-using System;
 using PimDeWitte.UnityMainThreadDispatcher;
 using System.Collections.Generic;
-using JetBrains.Annotations;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using System.Linq;
 using Newtonsoft.Json;
 
 public class ParameterSaveStates_Director : MonoBehaviour
@@ -24,16 +17,18 @@ public class ParameterSaveStates_Director : MonoBehaviour
     private readonly string MANIFESTLFILEPATH = Path.GetFullPath("app.vrmanifest");
 
     public Unity_Overlay menuOverlay;
-
     public GameObject profile_Container;
+    public GameObject Input_Container;
+    public GameObject Text_Container;
+    public GameObject Keyboard_Container;
 
-    public GameObject keyboard;
+    [Space(10)]
     
+    public Text StatusText;
     public Text CurrentAvatarText;
     public InputField inputField;
 
     private bool initialized = false;
-
     private string previousAvatar;
     private string currentAvatar;
 
@@ -180,7 +175,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     private void SetActiveProfiles()
     {
-        keyboard.SetActive(false);
+        Keyboard_Container.SetActive(false);
         profile_Container.SetActive(true);
         foreach (Transform child in profile_Container.transform)
         {
@@ -393,8 +388,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void ShowKeyboard()
     {
-        var active = keyboard.activeSelf;
-        keyboard.SetActive(!active);
+        var active = Keyboard_Container.activeSelf;
+        Keyboard_Container.SetActive(!active);
         profile_Container.SetActive(active);
         if (!active)
             inputField.Select();
@@ -404,7 +399,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void ShiftKeys()
     {
-        foreach (Transform child in keyboard.transform)
+        foreach (Transform child in Keyboard_Container.transform)
         {
             if (child.name == "Line1" || child.name == "Line2" || child.name == "Line3")
             {
