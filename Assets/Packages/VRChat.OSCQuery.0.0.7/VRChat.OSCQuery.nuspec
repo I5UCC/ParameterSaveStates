@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>VRChat.OSCQuery</id>
+    <version>0.0.7</version>
+    <authors>VRChat Developers</authors>
+    <license type="file">License.md</license>
+    <licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>
+    <readme>NuGetReadme.md</readme>
+    <description>We're developing this implementation of the protocol for OSC app creators integrate into their own projects as we have integrated it into VRChat. We're building it in C# targeting .NET 6 and Framework 4.6 so it will work in Unity as well as cross-platform .NET projects.</description>
+    <repository type="git" url="https://github.com/vrchat-community/vrc-oscquery-lib" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.6.2">
+        <dependency id="MeaMod.DNS" version="1.0.70" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.Logging.Abstractions" version="6.0.2" exclude="Build,Analyzers" />
+        <dependency id="Newtonsoft.Json" version="13.0.1" exclude="Build,Analyzers" />
+        <dependency id="System.Net.Http" version="4.3.4" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net6.0">
+        <dependency id="MeaMod.DNS" version="1.0.70" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.Logging.Abstractions" version="6.0.2" exclude="Build,Analyzers" />
+        <dependency id="Newtonsoft.Json" version="13.0.1" exclude="Build,Analyzers" />
+        <dependency id="System.Net.Http" version="4.3.4" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+    <contentFiles>
+      <files include="any/net462/Resources/favicon.ico" buildAction="Content" />
+      <files include="any/net6.0/Resources/favicon.ico" buildAction="Content" />
+      <files include="any/net462/Resources/OSCQueryExplorer.html" buildAction="Content" />
+      <files include="any/net6.0/Resources/OSCQueryExplorer.html" buildAction="Content" />
+    </contentFiles>
+  </metadata>
+</package>

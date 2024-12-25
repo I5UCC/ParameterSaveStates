@@ -1,5 +1,7 @@
 fileFormatVersion: 2
 guid: 6e83399662057714680f477b1a459599
+labels:
+- NuGetForUnity
 PluginImporter:
   externalObjects: {}
   serializedVersion: 2

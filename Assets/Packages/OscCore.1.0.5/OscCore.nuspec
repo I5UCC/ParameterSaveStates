@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>OscCore</id>
+    <version>1.0.5</version>
+    <title>Osc Core</title>
+    <authors>Phill Tew</authors>
+    <owners>Phill Tew</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectUrl>http://tilde.love/</projectUrl>
+    <iconUrl>https://s.gravatar.com/avatar/d56be08732b3f23cc1b11662034d8b1e?s=64</iconUrl>
+    <description>A preformant Open Sound Control library for .NET Standard from the creator of Rug.Osc</description>
+    <copyright>Copyright (c) Tilde Love Project. All rights reserved.</copyright>
+    <tags>tilde OSC Open Sound Control</tags>
+    <repository url="https://github.com/tilde-love/osc-core" />
+    <dependencies>
+      <group targetFramework=".NETStandard1.3">
+        <dependency id="NETStandard.Library" version="1.6.1" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

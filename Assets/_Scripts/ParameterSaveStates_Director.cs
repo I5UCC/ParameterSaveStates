@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using Valve.VR;
@@ -44,6 +45,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
     void Start()
     {
         _mainTheadDispatcher = UnityMainThreadDispatcher.Instance();
+        SetStatusText("Waiting for VRChat to connect...");
         ShiftKeys();
         Start_OSC();
     }
@@ -85,11 +87,24 @@ public class ParameterSaveStates_Director : MonoBehaviour
             currentAvatar = node.Value[0].ToString();
             Debug.Log("Current Avatar: " + currentAvatar);
             _mainTheadDispatcher.Enqueue(() => {
+                SetStatusText();
                 CurrentAvatarText.text = "Current Avatar: " + currentAvatar;
                 SetActiveProfiles();
             });
             _oscQuery.OnOscQueryServiceAdded -= OnOscQueryServiceAdded;
         }
+    }
+
+    private void SetStatusText(string text = "")
+    {
+        bool active = !string.IsNullOrWhiteSpace(text);
+        _mainTheadDispatcher.Enqueue(() => {
+            StatusText.text = text;
+            StatusText.gameObject.SetActive(active);
+            profile_Container.SetActive(!active);
+            Text_Container.SetActive(!active);
+            Input_Container.SetActive(!active);
+        });
     }
 
     private void OnMessageReceived(BlobString address, OscMessageValues values)
@@ -254,6 +269,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public async void SaveProfile(InputField input)
     {
+        Keyboard_Container.SetActive(false);
         if (string.IsNullOrWhiteSpace(currentAvatar))
         {
             Debug.LogError("No Avatar set");
@@ -276,24 +292,31 @@ public class ParameterSaveStates_Director : MonoBehaviour
             Debug.Log("Creating Directory: " + folderPath);
             Directory.CreateDirectory(folderPath);
         }
+        try {
+            var tree = await Extensions.GetOSCTree(QueryServiceProfile.address, QueryServiceProfile.port);
+            var node = tree.GetNodeWithPath("/avatar/parameters");
+            var dict = await getJson(node);
+            
+            var json = JsonConvert.SerializeObject(dict, Formatting.Indented);
+            string filePath = Path.Combine(folderPath, $"{input.text}");
+            File.WriteAllText(filePath, json);
+            
+            Debug.Log($"Saved Profile: {input.text}");
 
-        var tree = await Extensions.GetOSCTree(QueryServiceProfile.address, QueryServiceProfile.port);
-        var node = tree.GetNodeWithPath("/avatar/parameters");
+            _mainTheadDispatcher.Enqueue(() => {
+                SetActiveProfiles();
+            });
 
-        var dict = await getJson(node);
-        
-        // Save the dict to a file
-        var json = JsonConvert.SerializeObject(dict, Formatting.Indented);
-        string filePath = Path.Combine(folderPath, $"{input.text}");
-        File.WriteAllText(filePath, json);
-        
-        Debug.Log($"Saved Profile: {input.text}");
-
-        _mainTheadDispatcher.Enqueue(() => {
-            SetActiveProfiles();
-        });
-
-        input.text = "";
+            input.text = "";
+        }
+        catch (Exception e) {
+            Debug.LogError(e);
+            Debug.LogWarning("Lost Connection to VRChat, trying to reconnect...");
+            SetStatusText("Lost Connection to VRChat, trying to reconnect...");
+            QueryServiceProfile = null;
+            _oscQuery.OnOscQueryServiceAdded += OnOscQueryServiceAdded;
+            return;
+        }
     }
 
     public async Task<Dictionary<string, (string value, string OscType)>> getJson(OSCQueryNode node) 
