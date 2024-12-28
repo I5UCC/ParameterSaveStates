@@ -10,8 +10,9 @@ using System.Net;
 using System.Net.Sockets;
 using PimDeWitte.UnityMainThreadDispatcher;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
+using UnityEngine.Networking;
+using System.Threading;
 
 public class ParameterSaveStates_Director : MonoBehaviour
 {
@@ -34,8 +35,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
     private string currentAvatar;
 
     private OSCQueryService _oscQuery;
-    private int tcpPort = Extensions.GetAvailableTcpPort();
-    private int udpPort = Extensions.GetAvailableUdpPort();
+    private int tcpPort;
+    private int udpPort;
     private OscServer _receiver;
     private OscClient _sender;
     private UnityMainThreadDispatcher _mainTheadDispatcher;
@@ -45,6 +46,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
     void Start()
     {
         _mainTheadDispatcher = UnityMainThreadDispatcher.Instance();
+        tcpPort = Extensions.GetAvailableTcpPort();
+        udpPort = Extensions.GetAvailableUdpPort();
         SetStatusText("Waiting for VRChat to connect...");
         ShiftKeys();
         Start_OSC();
@@ -75,14 +78,16 @@ public class ParameterSaveStates_Director : MonoBehaviour
         _oscQuery.AddEndpoint<string>("/avatar/change", Attributes.AccessValues.WriteOnly);
     }
 
-    private async void OnOscQueryServiceAdded(OSCQueryServiceProfile profile)
+    private void OnOscQueryServiceAdded(OSCQueryServiceProfile profile)
     {
         Debug.Log($"\nfound service {profile.name} at {profile.port} on {profile.address}");
         if (profile.name.Contains("VRChat"))
         {
             QueryServiceProfile = profile;
             Debug.Log("QueryRoot: " + QueryServiceProfile.address + ":" + QueryServiceProfile.port);
-            var tree = await Extensions.GetOSCTree(QueryServiceProfile.address, QueryServiceProfile.port);
+            var test = Extensions.GetOSCTree(QueryServiceProfile.address, QueryServiceProfile.port);
+            test.Wait();
+            var tree = test.Result;
             var node = tree.GetNodeWithPath("/avatar/change");
             currentAvatar = node.Value[0].ToString();
             Debug.Log("Current Avatar: " + currentAvatar);
@@ -267,7 +272,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         SetActiveProfiles();
     }
 
-    public async void SaveProfile(InputField input)
+    public void SaveProfile(InputField input)
     {
         Keyboard_Container.SetActive(false);
         if (string.IsNullOrWhiteSpace(currentAvatar))
@@ -293,17 +298,29 @@ public class ParameterSaveStates_Director : MonoBehaviour
             Directory.CreateDirectory(folderPath);
         }
         try {
-            var tree = await Extensions.GetOSCTree(QueryServiceProfile.address, QueryServiceProfile.port);
+            using UnityWebRequest request = UnityWebRequest.Get($"http://{QueryServiceProfile.address}:{QueryServiceProfile.port}/");
+            var operation = request.SendWebRequest();
+            while (!operation.isDone)
+                Thread.Sleep(50);
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                throw new Exception($"Request error: {request.error}");
+            }
+
+            var req = request.downloadHandler.text;
+            var tree = OSCQueryRootNode.FromString(req);
             var node = tree.GetNodeWithPath("/avatar/parameters");
-            var dict = await getJson(node);
-            
+            var dict = getJson(node);
+
             var json = JsonConvert.SerializeObject(dict, Formatting.Indented);
             string filePath = Path.Combine(folderPath, $"{input.text}");
             File.WriteAllText(filePath, json);
-            
+
             Debug.Log($"Saved Profile: {input.text}");
 
-            _mainTheadDispatcher.Enqueue(() => {
+            _mainTheadDispatcher.Enqueue(() =>
+            {
                 SetActiveProfiles();
             });
 
@@ -319,7 +336,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         }
     }
 
-    public async Task<Dictionary<string, (string value, string OscType)>> getJson(OSCQueryNode node) 
+    public Dictionary<string, (string value, string OscType)> getJson(OSCQueryNode node) 
     {
         Dictionary<string, (string value, string OscType)> dict = new Dictionary<string, (string value, string OscType)>();
         foreach (var content in node.Contents)
@@ -327,9 +344,20 @@ public class ParameterSaveStates_Director : MonoBehaviour
             var value = content.Value.Value;
             if (value is null)
             {
-                var tree = await Extensions.GetOSCTree(QueryServiceProfile.address, QueryServiceProfile.port);
+                using UnityWebRequest request = UnityWebRequest.Get($"http://{QueryServiceProfile.address}:{QueryServiceProfile.port}/");
+                var operation = request.SendWebRequest();
+                while (!operation.isDone)
+                    Thread.Sleep(50);
+
+                if (request.result != UnityWebRequest.Result.Success)
+                {
+                    throw new Exception($"Request error: {request.error}");
+                }
+
+                var req = request.downloadHandler.text;
+                var tree = OSCQueryRootNode.FromString(req);
                 var innernode = tree.GetNodeWithPath(content.Value.FullPath);
-                var innerdict = await getJson(innernode);
+                var innerdict = getJson(innernode);
                 foreach (var innercontent in innerdict)
                 {
                     dict.Add(innercontent.Key, innercontent.Value);
@@ -439,5 +467,10 @@ public class ParameterSaveStates_Director : MonoBehaviour
                 }
             }
         }
+    }
+
+    public void setKeyboardvisibility(bool visible)
+    {
+        Keyboard_Container.SetActive(visible);
     }
 }
