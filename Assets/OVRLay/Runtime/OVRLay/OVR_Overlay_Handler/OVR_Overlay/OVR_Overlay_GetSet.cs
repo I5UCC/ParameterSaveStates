@@ -59,26 +59,6 @@ public partial class OVR_Overlay
     protected bool _focus = false;
     public bool focus { get { return _focus; } }
 
-
-    protected bool _overlayHighQuality = false;
-    public bool overlayHighQuality 
-    {
-        get 
-        {
-            if(OverlayExists && validHandle)
-                _overlayHighQuality = ( Overlay.GetHighQualityOverlay() == _overlayHandle );
-            
-            return _overlayHighQuality;
-        }
-        set 
-        {
-            _overlayHighQuality = value;
-
-            if(value && OverlayExists && validHandle)
-                error = Overlay.SetHighQualityOverlay(_overlayHandle);
-        }
-    }
-
     protected Color _overlayColor = Color.white;
     public Color overlayColor 
     {
@@ -142,6 +122,46 @@ public partial class OVR_Overlay
 
             if(OverlayExists && validHandle)
                 error = Overlay.SetOverlayWidthInMeters(_overlayHandle, value);
+        }
+    }
+    
+    protected bool _customAspectRatio = false;
+    
+    public bool customAspectRatio
+    {
+        get { return _customAspectRatio; }
+        set
+        {
+            _customAspectRatio = value;
+            SetAspectRatio();
+        }
+    }
+    
+    private void SetAspectRatio()
+    {
+        if(OverlayExists && validHandle)
+        {
+            float aspect = 1;
+            if(_customAspectRatio)
+                aspect = _overlayAspect;
+            error = Overlay.SetOverlayTexelAspect(_overlayHandle, aspect);
+        }
+    }
+    
+    protected float _overlayAspect = 16f / 9f;
+    
+    public float overlayAspect
+    {
+        get
+        {
+            if(_customAspectRatio)
+                return _overlayAspect;
+            return 1;
+        }
+        set
+        {
+            _overlayAspect = value;
+            SetAspectRatio();
         }
     }
 
@@ -434,49 +454,6 @@ public partial class OVR_Overlay
                 error = Overlay.SetOverlayTexture(_overlayThumbnailHandle, ref _overlayThumbnailTexture_t);
         }
     }
-
-    private HmdColor_t _overlayRenderModelColor = new HmdColor_t();
-    private Color _overlayRenderModelColor_U = new Color();
-
-    public Color overlayRenderModelColor 
-    {
-        get 
-        {
-            _overlayRenderModelColor_U.r = _overlayRenderModelColor.r;
-            _overlayRenderModelColor_U.g = _overlayRenderModelColor.g;
-            _overlayRenderModelColor_U.b = _overlayRenderModelColor.b;
-            _overlayRenderModelColor_U.a = _overlayRenderModelColor.a;
-
-            return _overlayRenderModelColor_U;
-        }
-        set 
-        {
-            _overlayRenderModelColor.r = value.r;
-            _overlayRenderModelColor.g = value.g;
-            _overlayRenderModelColor.b = value.b;
-            _overlayRenderModelColor.a = value.a;
-
-            if(_overlayRenderModel != "")
-                overlayRenderModel = _overlayRenderModel;
-        }
-    }
-
-    private string _overlayRenderModel = "";
-    public string overlayRenderModel 
-    {
-        get 
-        {
-            return _overlayRenderModel;
-        }
-        set 
-        {
-            _overlayRenderModel = value;
-
-            if(OverlayExists && validHandle)
-                error = Overlay.SetOverlayRenderModel(_overlayHandle, _overlayRenderModel, ref _overlayRenderModelColor);
-        }
-    }
-
     // Overlay Flags
 
     public bool GetFlag(VROverlayFlags flag) 
@@ -495,12 +472,6 @@ public partial class OVR_Overlay
     {
         if(OverlayExists && validHandle)
             error = Overlay.SetOverlayFlag(_overlayHandle, flag, val);
-    }
-
-    public bool overlayFlag_Curved
-    {
-        get { return GetFlag(VROverlayFlags.Curved); }
-        set { SetFlag(VROverlayFlags.Curved, value); }
     }
 
     public bool overlayFlag_ShowScrollWheel

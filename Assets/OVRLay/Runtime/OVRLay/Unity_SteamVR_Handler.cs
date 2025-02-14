@@ -35,6 +35,8 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 	public UnityEvent onDashboardOpen = new UnityEvent();
 	public UnityEvent onDashboardClose = new UnityEvent();
 
+	public UnityEvent<string> onKeyboardInput = new UnityEvent<string>();
+
 
 	[HideInInspector] public OVR_Handler ovrHandler = OVR_Handler.instance;
 
@@ -72,6 +74,11 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 			onDashboardOpen.Invoke();
 		else
 			onDashboardClose.Invoke();
+	}
+
+	void OnKeyboardInput(string input)
+	{
+		onKeyboardInput.Invoke(input);
 	}
 
 	void Update() 
@@ -143,6 +150,7 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 				
 				onSteamVRConnect.Invoke();
 				ovrHandler.onDashboardChange += OnDashboardChange;
+				ovrHandler.onKeyboardInput += OnKeyboardInput;
 
 				return true;
 			}		

@@ -473,4 +473,12 @@ public class ParameterSaveStates_Director : MonoBehaviour
     {
         Keyboard_Container.SetActive(visible);
     }
+
+    public void OnKeyboardInput(string input)
+    {
+        Debug.Log("Keyboard Input: " + input);
+        _mainTheadDispatcher.Enqueue(() => {
+            inputField.text = input;
+        });
+    }
 }

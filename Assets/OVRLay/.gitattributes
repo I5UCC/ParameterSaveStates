@@ -1,0 +1,157 @@
+#Sources:
+#https://hextantstudios.com/unity-gitattributes/
+
+# Macro for Unity YAML-based asset files.
+[attr]unityyaml -text merge=text diff
+
+# Macro for all binary files that should use Git LFS.
+[attr]lfs -text filter=lfs diff=lfs merge=lfs
+
+# Default to auto-normalized line endings.
+* text=auto
+
+## Unity ##
+*.cs diff=csharp text
+*.cginc text
+*.shader text
+*.asmdef text
+
+*.unity unityyaml
+*.asset unityyaml
+*.mat unityyaml
+*.anim unityyaml
+*.prefab unityyaml
+*.scene unityyaml
+*.physicsMaterial2D unityyaml
+*.physicsMaterial unityyaml
+*.meta unityyaml
+*.controller unityyaml
+*.overrideController unityyaml
+*.playable unityyaml
+*.mask unityyaml
+*.brush unityyaml
+*.flare unityyaml
+*.fontsettings unityyaml
+*.guiskin unityyaml
+*.giparams unityyaml
+*.renderTexture unityyaml
+*.spriteatlas unityyaml
+*.terrainlayer unityyaml
+*.mixer unityyaml
+*.shadervariants unityyaml
+*.preset unityyaml
+
+# Unity Binary Assets
+*.cubemap lfs
+*.unitypackage lfs
+# Note: Unity terrain assets must have "-Terrain" suffix.
+*-[Tt]errain.asset -unityyaml lfs
+*-[Tt]errainData.asset -unityyaml lfs
+# Note: Unity navmesh assets must have "-NavMesh" suffix.
+*-[Nn]av[Mm]esh.asset -unityyaml lfs
+
+#Image
+*.jpg lfs
+*.jpeg lfs
+*.png lfs
+*.psd lfs
+*.ai lfs
+*.cubemap lfs
+*.tif  lfs
+*.bmp lfs
+*.eps lfs
+*.svg lfs
+*.svgz lfs
+*.exr lfs
+*.hdr lfs
+*.tga lfs
+*.raw lfs
+*.arw lfs
+*.ttf lfs
+*.gif lfs
+*.apng lfs
+*.tiff lfs
+*.tif lfs
+*.iff lfs
+*.webp lfs
+*.afphoto lfs
+
+#Audio
+*.mp3 lfs
+*.wav lfs
+*.ogg lfs
+*.aiff lfs
+*.aif lfs
+*.mod lfs
+*.it lfs
+*.s3m lfs
+*.xm lfs
+
+#Video
+*.avi lfs
+*.flv lfs
+*.mov lfs
+*.mp4 lfs
+*.mpg lfs
+*.mpeg lfs
+*.wmv lfs
+*.webm lfs
+*.asf lfs
+*.ogv lfs
+
+#3D Object
+*.FBX lfs
+*.fbx lfs
+*.blend lfs
+*.blender lfs
+*.obj lfs
+*.dae lfs
+*.mesh lfs
+*.mb lfs
+*.ma lfs
+*.3ds lfs
+*.dfx lfs
+*.c4d lfs
+*.lwo lfs
+*.lwo2 lfs
+*.abc lfs
+*.3dm lfs
+*.bin lfs
+*.glb lfs
+
+# Executables
+*.exe lfs
+*.dll lfs
+*.so lfs
+*.pdb lfs
+*.mdb lfs
+
+#Compressed Archives
+*.7z lfs
+*.gz lfs
+*.rar lfs
+*.zip lfs
+*.tar lfs
+
+#More
+*.a lfs
+*.pdf lfs
+*.aif lfs
+*.rns lfs
+*.reason lfs
+*.lxo lfs
+*.dds lfs
+*.otf lfs
+*.chm lfs
+*.pict lfs
+*.xcf lfs
+*.leo lfs
+*.kra lfs
+*.kpp lfs
+*.clip lfs
+*.afdesign lfs
+*.bundle lfs
+*.ilk lfs
+*.bnk lfs
+grpc_csharp_plugin lfs
+protoc lfs

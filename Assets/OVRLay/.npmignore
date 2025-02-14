@@ -1,0 +1,34 @@
+syntax: glob
+#Includes stuff from https://github.com/github/gitignore/blob/master/Unity.gitignore
+
+# ------- General Ignore files -------
+DS_Store
+Thumbs
+*.db
+Thumbs.db.meta
+
+# ------- IDE files -------
+*.sln
+*.csproj
+*.pidb
+*.pidb.meta
+*.suo
+/.idea
+/.vs
+.gradle/
+
+# ------- Blender Temp files -------
+*.blend1
+*.blend2
+*.blend3
+*.blend4
+*.blend1.meta
+*.blend2.meta
+*.blend3.meta
+*.blend4.meta
+
+# ------- Custom ignore files -------
+.git
+.gitignore
+.gitattributes
+.npmignore

@@ -1,0 +1,23 @@
+{
+  "displayName": "OVRLay",
+  "name": "com.drfritzi.unity.ovrlay",
+  "version": "1.4.0-preview.1",
+  "description": "Easy-to-use toolkit for developing OpenVR Overlays with Unity Engine!",
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@github.com:DrFritzi/OVRLay.git"
+  },
+  "unity": "2022.3",
+  "author": "DrFritzi",
+  "contributors": [
+    "drfritzi@hotmail.com"
+  ],
+  "license": {
+    "type": "(MIT or BSD-3)",
+    "url": ""
+  },
+  "dependencies": {
+    "com.unity.ugui" : "1.0.0"
+  }
+}
+

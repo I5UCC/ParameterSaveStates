@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -58,17 +57,10 @@ public class Unity_Overlay : MonoBehaviour
 
 	[Range(0f, 1f)] public float opacity = 1.0f;
 	public float widthInMeters = 1.0f;
+	public bool customAspectRatio = false;
+	public float overlayAspect;
 	public Color colorTint = Color.white;
 	public bool useChaperoneColor = false;
-
-	
-	[Space(10)]
-	[Header("Overlay Render Model Settings")]
-	[Space(10)]
-	
-	public bool enableRenderModel = false;
-	public string renderModelPath = "";
-	public Color renderModelColor = Color.white;
 
 
 	[Space(10)]
@@ -92,10 +84,6 @@ public class Unity_Overlay : MonoBehaviour
 
 	[Space(10)]
 
-	public bool highQuality = false;
-
-	[Space(10)]
-
 	public bool isVisible = true;
 	public bool onlyShowInDashboard = false;
 
@@ -108,7 +96,7 @@ public class Unity_Overlay : MonoBehaviour
 	[Header("Overlay Device Tracking Settings")]
 	[Space(10)]
 
-	public Unity_Overlay.OverlayTrackedDevice deviceToTrack = Unity_Overlay.OverlayTrackedDevice.None;
+	public OverlayTrackedDevice deviceToTrack = OverlayTrackedDevice.None;
 	public uint customDeviceIndex = 0;
 
 
@@ -401,9 +389,11 @@ public class Unity_Overlay : MonoBehaviour
 		}
 		
 		overlay.overlayWidthInMeters = widthInMeters;
+		
+		overlay.overlayAspect = overlayAspect;
+		overlay.customAspectRatio = customAspectRatio;
 		overlay.overlayTextureBounds = textureBounds;
 		overlay.overlayMouseScale = mouseScale_t;
-		
 		if(overlayTexture)
 			reverseAspect = (float) overlayTexture.height / (float) overlayTexture.width;
 		else
@@ -549,13 +539,6 @@ public class Unity_Overlay : MonoBehaviour
 			opts.isVisible = isVisible;
 		}
 
-		if( opts.highQuality != highQuality ) 
-		{
-			overlay.overlayHighQuality = highQuality;
-
-			opts.highQuality = highQuality;
-		}
-
 		if( opts.colorTint != colorTint ) 
 		{
 			overlay.overlayColor = colorTint;
@@ -563,18 +546,30 @@ public class Unity_Overlay : MonoBehaviour
 			opts.colorTint = colorTint;
 		}
 
-		if( opts.opacity != opacity ) 
+		if(!Mathf.Approximately(opts.opacity, opacity )) 
 		{
 			overlay.overlayAlpha = opacity;
 
 			opts.opacity = opacity;
 		}
 
-		if( opts.widthInMeters != widthInMeters ) 
+		if(!Mathf.Approximately(opts.widthInMeters, widthInMeters) ) 
 		{
 			overlay.overlayWidthInMeters = widthInMeters;
 
 			opts.widthInMeters = widthInMeters;
+		}
+		
+		if(!Mathf.Approximately(opts.overlayAspect, overlayAspect))
+		{
+			overlay.overlayAspect = overlayAspect;
+			opts.overlayAspect = overlayAspect;
+		}
+		
+		if(opts.customAspectRatio != customAspectRatio)
+		{
+			overlay.customAspectRatio = customAspectRatio;
+			opts.customAspectRatio = customAspectRatio;
 		}
 
 		if(opts.sideBySideParallel != sideBySideParallel)
@@ -642,34 +637,6 @@ public class Unity_Overlay : MonoBehaviour
 
 			overlay.overlayMouseScale = mouseScale_t;
 			opts.mouseScale = mouseScale;
-		}
-
-		if(opts.enableRenderModel != enableRenderModel) 
-		{
-			opts.enableRenderModel = enableRenderModel;
-		}
-
-		if(opts.enableRenderModel)
-		{
-			if(opts.renderModelPath != renderModelPath)
-			{
-				overlay.overlayRenderModel = renderModelPath;
-				opts.renderModelPath = renderModelPath;
-			}
-		} 
-		else
-		{
-			if(opts.renderModelPath != "")
-			{
-				overlay.overlayRenderModel = "";
-				opts.renderModelPath = "";
-			}
-		}
-
-		if(opts.renderModelColor != renderModelColor)
-		{
-			overlay.overlayRenderModelColor = renderModelColor;
-			opts.renderModelColor = renderModelColor;
 		}
 	}
 
@@ -804,7 +771,6 @@ public struct Unity_Overlay_Opts
 	public Quaternion rot;
 
 	public bool isVisible;
-	public bool highQuality;
 
 	public bool sideBySideParallel;
 	public bool sideBySideCrossed;
@@ -812,6 +778,8 @@ public struct Unity_Overlay_Opts
 	public Color colorTint;
 	public float opacity;
 	public float widthInMeters;
+	public bool customAspectRatio;
+	public float overlayAspect;
 
 	public Unity_Overlay.OverlayTrackedDevice deviceToTrack;
 	public uint customDeviceIndex;
@@ -821,12 +789,6 @@ public struct Unity_Overlay_Opts
 
 	public bool useChapColor;
 	public Color lastChapColor;
-
-
-	public bool enableRenderModel;
-	public string renderModelPath;
-	public Color renderModelColor;
-	
 }
 
 public class Unity_Overlay_UI_Handler 
