@@ -1,4 +1,8 @@
-#ParameterSaveStates
+# ParameterSaveStates
+
+SteamVR Overlay which lets you create up to 20 profiles per avatar in VRChat.
+
+## Preview
 
 <img width="746" height="537" alt="Screenshot 2026-01-18 170343" src="https://github.com/user-attachments/assets/2094037b-fb50-48f1-9b1e-f371ccab2eee" />
 
