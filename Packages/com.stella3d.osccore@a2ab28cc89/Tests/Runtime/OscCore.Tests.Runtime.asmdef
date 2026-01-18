@@ -1,7 +1,9 @@
 {
     "name": "OscCore.Tests.Runtime",
     "references": [
-        "OscCore.Runtime"
+        "OscCore.Runtime",
+        "BlobHandles.Runtime",
+        "NtpTimestamp"
     ],
     "optionalUnityReferences": [],
     "includePlatforms": [],

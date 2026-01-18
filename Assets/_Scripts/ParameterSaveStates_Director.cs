@@ -10,54 +10,69 @@ using System.Net;
 using System.Net.Sockets;
 using PimDeWitte.UnityMainThreadDispatcher;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 using UnityEngine.Networking;
 using System.Threading;
+using System.Threading.Tasks;
 
 public class ParameterSaveStates_Director : MonoBehaviour
 {
-    private readonly string MANIFESTLFILEPATH = Path.GetFullPath("app.vrmanifest");
+    private readonly string _manifestFilePath = Path.GetFullPath("app.vrmanifest");
 
     public Unity_Overlay menuOverlay;
-    public GameObject profile_Container;
-    public GameObject Input_Container;
-    public GameObject Text_Container;
-    public GameObject Keyboard_Container;
-
+    public GameObject profileContainer;
+    
     [Space(10)]
     
-    public Text StatusText;
-    public Text CurrentAvatarText;
-    public InputField inputField;
-
-    private bool initialized = false;
-    private string previousAvatar;
-    private string currentAvatar;
-
+    public Text statusText;
+    public Text currentAvatarText;
+    
+    [Space(10)]
+    
+    public Button copyFromPreviousButton;
+    public Button newButton;
+    public Button cancelButton;
+    
+    private string _previousAvatar;
+    private string _currentAvatar;
     private OSCQueryService _oscQuery;
-    private int tcpPort;
-    private int udpPort;
+    private int _tcpPort;
+    private int _udpPort;
     private OscServer _receiver;
     private OscClient _sender;
     private UnityMainThreadDispatcher _mainTheadDispatcher;
+    private OSCQueryServiceProfile _queryServiceProfile;
+    private bool _steamVRKeyboardOpen;
+    private string _profileText = string.Empty;
+    
+    private bool _initialized;
 
-    private OSCQueryServiceProfile QueryServiceProfile;
-
-    void Start()
+    private void Start()
     {
         _mainTheadDispatcher = UnityMainThreadDispatcher.Instance();
-        tcpPort = Extensions.GetAvailableTcpPort();
-        udpPort = Extensions.GetAvailableUdpPort();
+        _tcpPort = Extensions.GetAvailableTcpPort();
+        _udpPort = Extensions.GetAvailableUdpPort();
         SetStatusText("Waiting for VRChat to connect...");
-        ShiftKeys();
+        
+        currentAvatarText.gameObject.SetActive(false);
+        cancelButton.gameObject.SetActive(false);
+        newButton.gameObject.SetActive(false);
+        copyFromPreviousButton.gameObject.SetActive(false);
+        
         Start_OSC();
+        
+        if (menuOverlay != null && menuOverlay.overlay != null)
+        {
+            menuOverlay.overlay.onKeyboardDone += OnKeyboardDone;
+        }
     }
 
     private void Start_OSC()
     {
         _sender = new OscClient("127.0.0.1", 9000);
         VRC.OSCQuery.IDiscovery discovery = new MeaModDiscovery();
-        _receiver = OscServer.GetOrCreate(udpPort);
+        _receiver = OscServer.GetOrCreate(_udpPort);
 
         // Listen to all incoming messages
         _receiver.AddMonitorCallback(OnMessageReceived);
@@ -66,8 +81,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
             .WithServiceName("VRCParameterSaveStates")
             .WithHostIP(GetLocalIPAddress())
             .WithOscIP(GetLocalIPAddressNonLoopback())
-            .WithTcpPort(tcpPort)
-            .WithUdpPort(udpPort)
+            .WithTcpPort(_tcpPort)
+            .WithUdpPort(_udpPort)
             .WithDiscovery(discovery)
             .StartHttpServer()
             .AdvertiseOSC()
@@ -81,61 +96,53 @@ public class ParameterSaveStates_Director : MonoBehaviour
     private void OnOscQueryServiceAdded(OSCQueryServiceProfile profile)
     {
         Debug.Log($"\nfound service {profile.name} at {profile.port} on {profile.address}");
-        if (profile.name.Contains("VRChat"))
-        {
-            QueryServiceProfile = profile;
-            Debug.Log("QueryRoot: " + QueryServiceProfile.address + ":" + QueryServiceProfile.port);
-            var test = Extensions.GetOSCTree(QueryServiceProfile.address, QueryServiceProfile.port);
-            test.Wait();
-            var tree = test.Result;
-            var node = tree.GetNodeWithPath("/avatar/change");
-            currentAvatar = node.Value[0].ToString();
-            Debug.Log("Current Avatar: " + currentAvatar);
-            _mainTheadDispatcher.Enqueue(() => {
-                SetStatusText();
-                CurrentAvatarText.text = "Current Avatar: " + currentAvatar;
-                SetActiveProfiles();
-            });
-            _oscQuery.OnOscQueryServiceAdded -= OnOscQueryServiceAdded;
-        }
+        if (!profile.name.Contains("VRChat")) return;
+        _queryServiceProfile = profile;
+        Debug.Log("QueryRoot: " + _queryServiceProfile.address + ":" + _queryServiceProfile.port);
+        var test = Extensions.GetOSCTree(_queryServiceProfile.address, _queryServiceProfile.port);
+        test.Wait();
+        var tree = test.Result;
+        var node = tree.GetNodeWithPath("/avatar/change");
+        _currentAvatar = node.Value[0].ToString();
+        Debug.Log("Current Avatar: " + _currentAvatar);
+        _mainTheadDispatcher.Enqueue(() => {
+            SetStatusText();
+            currentAvatarText.text = "Current Avatar: " + _currentAvatar;
+            SetActiveProfiles();
+        });
+        _oscQuery.OnOscQueryServiceAdded -= OnOscQueryServiceAdded;
+        _initialized = true;
     }
 
     private void SetStatusText(string text = "")
     {
-        bool active = !string.IsNullOrWhiteSpace(text);
-        _mainTheadDispatcher.Enqueue(() => {
-            StatusText.text = text;
-            StatusText.gameObject.SetActive(active);
-            profile_Container.SetActive(!active);
-            Text_Container.SetActive(!active);
-            Input_Container.SetActive(!active);
-        });
+        var active = !string.IsNullOrWhiteSpace(text);
+        statusText.text = text;
+        statusText.gameObject.SetActive(active);
+        profileContainer.SetActive(!active);
     }
 
     private void OnMessageReceived(BlobString address, OscMessageValues values)
     {
-        string address_string = address.ToString();
+        var addressString = address.ToString();
 
-        if (address_string == "/avatar/change")
+        if (addressString != "/avatar/change") return;
+        
+        var temp = values.ReadStringElement(0);
+        if (temp == _currentAvatar)
         {
-            var temp = values.ReadStringElement(0);
-            if (temp == currentAvatar)
-            {
-                return;
-            }
-            previousAvatar = currentAvatar;
-            currentAvatar = values.ReadStringElement(0);
-            Debug.Log("Avatar changed from: " + previousAvatar);
-            Debug.Log("Avatar changed to: " + currentAvatar);
-            _mainTheadDispatcher.Enqueue(() => {
-                CurrentAvatarText.text = "Current Avatar: " + currentAvatar;
-                SetActiveProfiles();
-            });
             return;
         }
+        _previousAvatar = _currentAvatar;
+        _currentAvatar = values.ReadStringElement(0);
+        _mainTheadDispatcher.Enqueue(() => {
+            currentAvatarText.text = "Current Avatar: " + _currentAvatar;
+            SetActiveProfiles();
+        });
+        return;
     }
 
-    public static IPAddress GetLocalIPAddress()
+    private static IPAddress GetLocalIPAddress()
     {
         // Android can always serve on the non-loopback address
 #if UNITY_ANDROID
@@ -146,20 +153,13 @@ public class ParameterSaveStates_Director : MonoBehaviour
 #endif
     }
 
-    public static IPAddress GetLocalIPAddressNonLoopback()
+    private static IPAddress GetLocalIPAddressNonLoopback()
     {
         // Get the host name of the local machine
-        string hostName = Dns.GetHostName();
+        var hostName = Dns.GetHostName();
 
         // Get the IP address of the first IPv4 network interface found on the local machine
-        foreach (IPAddress ip in Dns.GetHostEntry(hostName).AddressList)
-        {
-            if (ip.AddressFamily == AddressFamily.InterNetwork)
-            {
-                return ip;
-            }
-        }
-        return null;
+        return Dns.GetHostEntry(hostName).AddressList.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork);
     }
 
     public void OnApplicationQuit()
@@ -170,10 +170,9 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void OnSteamVRConnect()
     {
-        initialized = true;
-        if (File.Exists(MANIFESTLFILEPATH))
+        if (File.Exists(_manifestFilePath))
         {
-            OpenVR.Applications.AddApplicationManifest(MANIFESTLFILEPATH, false);
+            OpenVR.Applications.AddApplicationManifest(_manifestFilePath, false);
         }
     }
 
@@ -185,7 +184,13 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void OnDashBoardOpen()
     {
-        return;
+        if (!_initialized) return;
+        
+        _steamVRKeyboardOpen = false;
+        currentAvatarText.gameObject.SetActive(true);
+        cancelButton.gameObject.SetActive(false);
+        newButton.gameObject.SetActive(true);
+        copyFromPreviousButton.gameObject.SetActive(true);
     }
 
     public void OnDashBoardClose()
@@ -195,33 +200,36 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     private void SetActiveProfiles()
     {
-        Keyboard_Container.SetActive(false);
-        profile_Container.SetActive(true);
-        foreach (Transform child in profile_Container.transform)
+        profileContainer.SetActive(true);
+        foreach (Transform child in profileContainer.transform)
         {
             child.gameObject.SetActive(false);
         }
 
-        string folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{currentAvatar}");
+        var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{_currentAvatar}");
         if (!Directory.Exists(folderPath))
         {
             return;
         }
-
-        // get all json files in the folder
-        string[] files = Directory.GetFiles(folderPath, "*");
-        for (int i = 0; i < files.Length; i++)
+        
+        var files = Directory.GetFiles(folderPath, "*");
+        for (var i = 0; i < files.Length; i++)
         {
-            string fileName = Path.GetFileName(files[i]);
-            GameObject profile = profile_Container.transform.GetChild(i).gameObject;
+            var fileName = Path.GetFileName(files[i]);
+            var profile = profileContainer.transform.GetChild(i).gameObject;
             profile.SetActive(true);
             profile.transform.GetChild(0).GetComponent<Text>().text = fileName;
         }
+        
+        currentAvatarText.gameObject.SetActive(true);
+        cancelButton.gameObject.SetActive(false);
+        newButton.gameObject.SetActive(true);
+        copyFromPreviousButton.gameObject.SetActive(true);
     }
 
     public void SetProfile(GameObject profile)
     {
-        string profilepath = Path.Combine(Application.persistentDataPath, $"Profiles/{currentAvatar}/{profile.transform.GetChild(0).GetComponent<Text>().text}");
+        string profilepath = Path.Combine(Application.persistentDataPath, $"Profiles/{_currentAvatar}/{profile.transform.GetChild(0).GetComponent<Text>().text}");
         if (!File.Exists(profilepath))
         {
             Debug.LogError("Profile not found");
@@ -254,51 +262,53 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void DeleteProfile(GameObject profile)
     {
-        Text DeleteText = profile.transform.GetChild(2).GetChild(0).GetComponent<Text>();
-        if (DeleteText.text == "Delete")
+        var deleteText = profile.transform.GetChild(2).GetChild(0).GetComponent<Text>();
+        if (deleteText.text == "Delete")
         {
-            DeleteText.text = "Sure?";
+            deleteText.text = "Sure?";
             return;
         }
-        string profilepath = Path.Combine(Application.persistentDataPath, $"Profiles/{currentAvatar}/{profile.transform.GetChild(0).GetComponent<Text>().text}");
-        if (!File.Exists(profilepath))
+        var profilePath = Path.Combine(Application.persistentDataPath, $"Profiles/{_currentAvatar}/{profile.transform.GetChild(0).GetComponent<Text>().text}");
+        if (!File.Exists(profilePath))
         {
             Debug.LogError("Profile not found");
             return;
         }
-        File.Delete(profilepath);
+        File.Delete(profilePath);
         profile.SetActive(false);
-        DeleteText.text = "Delete";
+        deleteText.text = "Delete";
         SetActiveProfiles();
     }
-
-    public void SaveProfile(InputField input)
+    
+    private System.Collections.IEnumerator SaveProfileDelayed()
     {
-        Keyboard_Container.SetActive(false);
-        if (string.IsNullOrWhiteSpace(currentAvatar))
-        {
-            Debug.LogError("No Avatar set");
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(input.text))
-        {
-            Debug.LogWarning("No Profile Name set");
-            return;
-        }
-        if (QueryServiceProfile == null) {
-            Debug.LogWarning("No QueryRoot found");
-            return;
-        }
+        yield return null;
+        SaveProfile();
+    }
 
-        // Create a folder with currentAvatar as the name
-        string folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{currentAvatar}");
+    private void SaveProfile()
+    {
+        if (string.IsNullOrWhiteSpace(_currentAvatar))
+        {
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(_profileText))
+        {
+            return;
+        }
+        
+        if (_queryServiceProfile == null) {
+            return;
+        }
+        
+        var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{_currentAvatar}");
         if (!Directory.Exists(folderPath))
         {
-            Debug.Log("Creating Directory: " + folderPath);
             Directory.CreateDirectory(folderPath);
         }
         try {
-            using UnityWebRequest request = UnityWebRequest.Get($"http://{QueryServiceProfile.address}:{QueryServiceProfile.port}/");
+            using UnityWebRequest request = UnityWebRequest.Get($"http://{_queryServiceProfile.address}:{_queryServiceProfile.port}/");
             var operation = request.SendWebRequest();
             while (!operation.isDone)
                 Thread.Sleep(50);
@@ -314,37 +324,40 @@ public class ParameterSaveStates_Director : MonoBehaviour
             var dict = getJson(node);
 
             var json = JsonConvert.SerializeObject(dict, Formatting.Indented);
-            string filePath = Path.Combine(folderPath, $"{input.text}");
+            var filePath = Path.Combine(folderPath, $"{_profileText}");
             File.WriteAllText(filePath, json);
-
-            Debug.Log($"Saved Profile: {input.text}");
 
             _mainTheadDispatcher.Enqueue(() =>
             {
                 SetActiveProfiles();
             });
 
-            input.text = "";
+            _profileText = string.Empty;
+            currentAvatarText.gameObject.SetActive(true);
+            cancelButton.gameObject.SetActive(false);
+            newButton.gameObject.SetActive(true);
+            copyFromPreviousButton.gameObject.SetActive(true);
+            SetStatusText();
         }
         catch (Exception e) {
             Debug.LogError(e);
             Debug.LogWarning("Lost Connection to VRChat, trying to reconnect...");
             SetStatusText("Lost Connection to VRChat, trying to reconnect...");
-            QueryServiceProfile = null;
+            _queryServiceProfile = null;
             _oscQuery.OnOscQueryServiceAdded += OnOscQueryServiceAdded;
             return;
         }
     }
 
-    public Dictionary<string, (string value, string OscType)> getJson(OSCQueryNode node) 
+    private Dictionary<string, (string value, string OscType)> getJson(OSCQueryNode node) 
     {
-        Dictionary<string, (string value, string OscType)> dict = new Dictionary<string, (string value, string OscType)>();
+        var dict = new Dictionary<string, (string value, string OscType)>();
         foreach (var content in node.Contents)
         {
             var value = content.Value.Value;
             if (value is null)
             {
-                using UnityWebRequest request = UnityWebRequest.Get($"http://{QueryServiceProfile.address}:{QueryServiceProfile.port}/");
+                using var request = UnityWebRequest.Get($"http://{_queryServiceProfile.address}:{_queryServiceProfile.port}/");
                 var operation = request.SendWebRequest();
                 while (!operation.isDone)
                     Thread.Sleep(50);
@@ -370,6 +383,17 @@ public class ParameterSaveStates_Director : MonoBehaviour
         }
         return dict;
     }
+    
+    private void OnKeyboardDone()
+    {
+        _steamVRKeyboardOpen = false;
+        var finalText = new System.Text.StringBuilder(256);
+        OpenVR.Overlay.GetKeyboardText(finalText, 256);
+        _profileText = finalText.ToString();
+        SetStatusText("Saving Profile...");
+        
+        StartCoroutine(SaveProfileDelayed());
+    }
 
     public void CopyFromPreviousAvatar(Text buttontext)
     {
@@ -377,108 +401,92 @@ public class ParameterSaveStates_Director : MonoBehaviour
             buttontext.text = "Sure?";
             return;
         }
-        if (string.IsNullOrWhiteSpace(previousAvatar))
+        if (string.IsNullOrWhiteSpace(_previousAvatar))
         {
             Debug.LogError("No Previous Avatar set");
             return;
         }
 
-        var previousfolderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{previousAvatar}");
-        var currentfolderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{currentAvatar}");
+        var previousFolderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{_previousAvatar}");
+        var currentFolderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{_currentAvatar}");
 
-        if (!Directory.Exists(previousfolderPath))
+        if (!Directory.Exists(previousFolderPath))
         {
             Debug.LogError("Previous Avatar Folder not found");
             return;
         }
 
-        if (!Directory.Exists(currentfolderPath))
+        if (!Directory.Exists(currentFolderPath))
         {
-            Debug.Log("Creating Directory: " + currentfolderPath);
-            Directory.CreateDirectory(currentfolderPath);
+            Debug.Log("Creating Directory: " + currentFolderPath);
+            Directory.CreateDirectory(currentFolderPath);
         }
 
-        string[] files = Directory.GetFiles(previousfolderPath, "*");
-        for (int i = 0; i < files.Length; i++)
+        var files = Directory.GetFiles(previousFolderPath, "*");
+        foreach (var t in files)
         {
-            string fileName = Path.GetFileName(files[i]);
-            string sourceFile = Path.Combine(previousfolderPath, fileName);
-            string destFile = Path.Combine(currentfolderPath, fileName);
+            var fileName = Path.GetFileName(t);
+            var sourceFile = Path.Combine(previousFolderPath, fileName);
+            var destFile = Path.Combine(currentFolderPath, fileName);
             File.Copy(sourceFile, destFile, true);
         }
         SetActiveProfiles();
         buttontext.text = "Copy From Last";
     }
-
-    public void HandleInput(Button button)
+    
+    public void Cancel()
     {
-        var key = button.name;
-        if (key == "BACK")
+        if (!_steamVRKeyboardOpen) return;
+        
+        OpenVR.Overlay.HideKeyboard();
+        _steamVRKeyboardOpen = false;
+        SetStatusText();
+        currentAvatarText.gameObject.SetActive(true);
+        cancelButton.gameObject.SetActive(false);
+        newButton.gameObject.SetActive(true);
+        copyFromPreviousButton.gameObject.SetActive(true);
+    }
+
+    public void NewProfile() => ShowKeyboard();
+
+    private void ShowKeyboard()
+    {
+        if (OpenVR.Overlay == null || menuOverlay == null || menuOverlay.overlay == null) return;
+        
+        var overlayHandle = menuOverlay.overlay.overlayHandle;
+            
+        if (overlayHandle == OpenVR.k_ulOverlayHandleInvalid)
         {
-            if (inputField.text.Length > 0)
-            {
-                inputField.text = inputField.text.Remove(inputField.text.Length - 1);
-            }
+            Debug.LogError("Overlay handle is invalid - menuOverlay may not be initialized");
             return;
         }
-        else if (key == "SPACE")
+            
+        Debug.Log($"Using overlay handle: {overlayHandle}");
+
+        var error = OpenVR.Overlay.ShowKeyboardForOverlay(
+            overlayHandle,
+            (int)EGamepadTextInputMode.k_EGamepadTextInputModeNormal,
+            (int)EGamepadTextInputLineMode.k_EGamepadTextInputLineModeSingleLine,
+            0,
+            "Enter Profile Name",
+            256,
+            _profileText,
+            0
+        );
+
+        if (error != EVROverlayError.None)
         {
-            inputField.text += " ";
+            Debug.LogError($"Failed to show SteamVR keyboard: {error}");
             return;
         }
-        else if (key == "SHIFT")
-        {
-            _mainTheadDispatcher.Enqueue(() => {
-                ShiftKeys();
-            });
-            return;
-        }
-        key = button.GetComponentInChildren<Text>().text;
-        inputField.text += key;
-    }
-
-    public void ShowKeyboard()
-    {
-        var active = Keyboard_Container.activeSelf;
-        Keyboard_Container.SetActive(!active);
-        profile_Container.SetActive(active);
-        if (!active)
-            inputField.Select();
-        else
-            inputField.DeactivateInputField();
-    }
-
-    public void ShiftKeys()
-    {
-        foreach (Transform child in Keyboard_Container.transform)
-        {
-            if (child.name == "Line1" || child.name == "Line2" || child.name == "Line3")
-            {
-                foreach (Transform button in child)
-                {
-                    if (button.GetComponentInChildren<Text>().text == button.GetComponentInChildren<Text>().text.ToUpper())
-                    {
-                        button.GetComponentInChildren<Text>().text = button.GetComponentInChildren<Text>().text.ToLower();
-                    }
-                    else
-                    {
-                        button.GetComponentInChildren<Text>().text = button.GetComponentInChildren<Text>().text.ToUpper();
-                    }
-                }
-            }
-        }
-    }
-
-    public void setKeyboardvisibility(bool visible)
-    {
-        Keyboard_Container.SetActive(visible);
-    }
-
-    public void OnKeyboardInput(string input)
-    {
-        Debug.Log("Keyboard Input: " + input);
-        _mainTheadDispatcher.Enqueue(() => {
-            inputField.text = input;
-        });
+        
+        currentAvatarText.gameObject.SetActive(true);
+        cancelButton.gameObject.SetActive(true);
+        newButton.gameObject.SetActive(false);
+        copyFromPreviousButton.gameObject.SetActive(false);
+        
+        SetStatusText("Enter Profile Name");
+        Debug.Log("SteamVR keyboard opened successfully");
+        _steamVRKeyboardOpen = true;
     }
 }
