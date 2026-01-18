@@ -1,6 +1,19 @@
 # ParameterSaveStates
 
-SteamVR Overlay which lets you create up to 20 profiles per avatar in VRChat.
+SteamVR Dashboard Application, which lets you create up to 20 profiles per avatar in VRChat.
+
+## Features
+- Conveniently placed in the SteamVR Dashboard
+  - Find the blue icon that looks like a floppy disk in the SteamVR dashboard.
+- Save up to 20 profiles ***per avatar*** with custom naming
+  - Setup the avatar the way you want to save it
+  - hit `+ New`
+  - Enter the Profiles Name
+  - Click on the checkmark on the SteamVR Keyboard
+- Apply profiles at will
+  - Just hit Apply on any of the Profiles you have saved
+- Copy profile sets between avatars, if e.g. You have the same avatar with other clothing choices or just more optimized versions.
+  - Switch into the avatar you want to copy from first, then switch into the avatar you want to copy to, then press the "Copy from Last" button.
 
 ## Preview
 
