@@ -53,8 +53,9 @@ public class ParameterSaveStates_Director : MonoBehaviour
     private OSCQueryServiceProfile _queryServiceProfile;
     private bool _steamVRKeyboardOpen;
     private string _profileText = string.Empty;
-    private const int MaxProfiles = 20;
-    private List<string> _availableProfiles = new List<string>(MaxProfiles);
+    private const int PageSize = 20;
+    private int _currentPage = 0;
+    private List<string> _availableProfiles = new List<string>();
 
     private bool _initialized;
 
@@ -131,6 +132,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         statusText.text = text;
         statusText.gameObject.SetActive(active);
         profileContainer.SetActive(!active);
+        pagingContainer.SetActive(!active);
     }
 
     private void OnMessageReceived(BlobString address, OscMessageValues values)
@@ -223,24 +225,90 @@ public class ParameterSaveStates_Director : MonoBehaviour
         var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{_currentAvatar}");
         if (!Directory.Exists(folderPath))
         {
+            _availableProfiles.Clear();
+            _currentPage = 0;
+            UpdatePagingButtons();
             return;
         }
 
         var files = Directory.GetFiles(folderPath, "*");
         _availableProfiles.Clear();
-        for (var i = 0; i < files.Length; i++)
+        _availableProfiles.AddRange(files);
+
+        // Ensure current page is valid
+        var totalPages = GetTotalPages();
+        if (_currentPage >= totalPages)
         {
-            _availableProfiles.Add(files[i]);
-            var fileName = Path.GetFileName(files[i]);
-            var profile = profileContainer.transform.GetChild(i).gameObject;
-            profile.SetActive(true);
-            profile.transform.GetChild(0).GetComponent<Text>().text = fileName;
+            _currentPage = Math.Max(0, totalPages - 1);
         }
+
+        DisplayCurrentPage();
 
         currentAvatarText.gameObject.SetActive(true);
         cancelButton.gameObject.SetActive(false);
         newButton.gameObject.SetActive(true);
         copyFromPreviousButton.gameObject.SetActive(true);
+    }
+
+    private void DisplayCurrentPage()
+    {
+        foreach (Transform child in profileContainer.transform)
+        {
+            child.gameObject.SetActive(false);
+        }
+
+        var startIndex = _currentPage * PageSize;
+        var endIndex = Math.Min(startIndex + PageSize, _availableProfiles.Count);
+
+        for (var i = startIndex; i < endIndex; i++)
+        {
+            var childIndex = i - startIndex;
+            var fileName = Path.GetFileName(_availableProfiles[i]);
+            var profile = profileContainer.transform.GetChild(childIndex).gameObject;
+            profile.SetActive(true);
+            profile.transform.GetChild(0).GetComponent<Text>().text = fileName;
+        }
+
+        UpdatePagingButtons();
+    }
+
+    private int GetTotalPages()
+    {
+        if (_availableProfiles.Count == 0) return 0;
+        return (int)Math.Ceiling((double)_availableProfiles.Count / PageSize);
+    }
+
+    private void UpdatePagingButtons()
+    {
+        var totalPages = GetTotalPages();
+        var hasMultiplePages = totalPages > 1;
+
+        pagingContainer.SetActive(hasMultiplePages);
+        
+        if (hasMultiplePages)
+        {
+            PrevPageButton.interactable = _currentPage > 0;
+            NextPageButton.interactable = _currentPage < totalPages - 1;
+        }
+    }
+
+    public void NextPage()
+    {
+        var totalPages = GetTotalPages();
+        if (_currentPage < totalPages - 1)
+        {
+            _currentPage++;
+            DisplayCurrentPage();
+        }
+    }
+
+    public void PrevPage()
+    {
+        if (_currentPage > 0)
+        {
+            _currentPage--;
+            DisplayCurrentPage();
+        }
     }
 
     public void SetProfile(GameObject profile)
@@ -482,16 +550,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void NewProfile()
     {
-        if (_availableProfiles.Count == MaxProfiles)
-        {
-            Debug.LogError($"Maximum number of profiles reached {MaxProfiles}");
-            currentAvatarText.gameObject.SetActive(true);
-            cancelButton.gameObject.SetActive(false);
-            newButton.gameObject.SetActive(true);
-            copyFromPreviousButton.gameObject.SetActive(true);
-            SetStatusText();
-            return;
-        }
         ShowKeyboard();
     } 
 
@@ -515,7 +573,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
             (int)EGamepadTextInputLineMode.k_EGamepadTextInputLineModeSingleLine,
             0,
             "Enter Profile Name",
-            65,
+            255,
             _profileText,
             0
         );
