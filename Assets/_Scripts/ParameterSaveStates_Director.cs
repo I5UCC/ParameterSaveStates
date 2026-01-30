@@ -233,7 +233,15 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
         var files = Directory.GetFiles(folderPath, "*");
         _availableProfiles.Clear();
-        _availableProfiles.AddRange(files);
+        
+        // Sort files by their index prefix
+        var sortedFiles = files
+            .Select(f => new { Path = f, Index = GetProfileIndex(f) })
+            .OrderBy(f => f.Index)
+            .Select(f => f.Path)
+            .ToList();
+        
+        _availableProfiles.AddRange(sortedFiles);
 
         // Ensure current page is valid
         var totalPages = GetTotalPages();
@@ -264,12 +272,47 @@ public class ParameterSaveStates_Director : MonoBehaviour
         {
             var childIndex = i - startIndex;
             var fileName = Path.GetFileName(_availableProfiles[i]);
+            var displayName = GetProfileDisplayName(fileName);
             var profile = profileContainer.transform.GetChild(childIndex).gameObject;
             profile.SetActive(true);
-            profile.transform.GetChild(0).GetComponent<Text>().text = fileName;
+            profile.transform.GetChild(0).GetComponent<Text>().text = displayName;
         }
 
         UpdatePagingButtons();
+    }
+
+    private int GetProfileIndex(string filePath)
+    {
+        var fileName = Path.GetFileName(filePath);
+        var underscoreIndex = fileName.IndexOf('_');
+        if (underscoreIndex > 0 && int.TryParse(fileName.Substring(0, underscoreIndex), out var index))
+        {
+            return index;
+        }
+        return int.MaxValue; // Files without index go to the end
+    }
+
+    private string GetProfileDisplayName(string fileName)
+    {
+        var underscoreIndex = fileName.IndexOf('_');
+        if (underscoreIndex > 0 && int.TryParse(fileName.Substring(0, underscoreIndex), out _))
+        {
+            return fileName.Substring(underscoreIndex + 1);
+        }
+        return fileName;
+    }
+
+    private int GetNextProfileIndex()
+    {
+        if (_availableProfiles.Count == 0) return 1;
+        
+        var maxIndex = _availableProfiles
+            .Select(GetProfileIndex)
+            .Where(i => i != int.MaxValue)
+            .DefaultIfEmpty(0)
+            .Max();
+        
+        return maxIndex + 1;
     }
 
     private int GetTotalPages()
@@ -313,16 +356,17 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void SetProfile(GameObject profile)
     {
-        var profilepath = Path.Combine(Application.persistentDataPath,
-            $"Profiles/{_currentAvatar}/{profile.transform.GetChild(0).GetComponent<Text>().text}");
-        if (!File.Exists(profilepath))
+        var displayName = profile.transform.GetChild(0).GetComponent<Text>().text;
+        var profilePath = _availableProfiles.FirstOrDefault(p => GetProfileDisplayName(Path.GetFileName(p)) == displayName);
+        
+        if (string.IsNullOrEmpty(profilePath) || !File.Exists(profilePath))
         {
             Debug.LogError("Profile not found");
             return;
         }
 
         // Read the json file
-        var json = File.ReadAllText(profilepath);
+        var json = File.ReadAllText(profilePath);
         var dict = JsonConvert.DeserializeObject<Dictionary<string, (string, string)>>(json);
 
         foreach (var item in dict)
@@ -354,9 +398,10 @@ public class ParameterSaveStates_Director : MonoBehaviour
             return;
         }
 
-        var profilePath = Path.Combine(Application.persistentDataPath,
-            $"Profiles/{_currentAvatar}/{profile.transform.GetChild(0).GetComponent<Text>().text}");
-        if (!File.Exists(profilePath))
+        var displayName = profile.transform.GetChild(0).GetComponent<Text>().text;
+        var profilePath = _availableProfiles.FirstOrDefault(p => GetProfileDisplayName(Path.GetFileName(p)) == displayName);
+        
+        if (string.IsNullOrEmpty(profilePath) || !File.Exists(profilePath))
         {
             Debug.LogError("Profile not found");
             return;
@@ -381,15 +426,11 @@ public class ParameterSaveStates_Director : MonoBehaviour
             return;
         }
 
+        var nextIndex = GetNextProfileIndex();
+        
         if (string.IsNullOrWhiteSpace(_profileText))
         {
-            var profileIndex = 1;
-            if (_availableProfiles.Count > 0)
-            {
-                profileIndex = _availableProfiles.Count + 1;
-            }
-
-            _profileText = "Profile " + profileIndex;
+            _profileText = "Profile " + nextIndex;
         }
 
         if (_queryServiceProfile == null)
@@ -422,7 +463,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
             var dict = getJson(node);
 
             var json = JsonConvert.SerializeObject(dict, Formatting.Indented);
-            var filePath = Path.Combine(folderPath, $"{_profileText}");
+            var indexedFileName = $"{nextIndex}_{_profileText}";
+            var filePath = Path.Combine(folderPath, indexedFileName);
             File.WriteAllText(filePath, json);
 
             _mainTheadDispatcher.Enqueue(() => { SetActiveProfiles(); });
