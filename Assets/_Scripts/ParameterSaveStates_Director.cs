@@ -20,14 +20,27 @@ public class ParameterSaveStates_Director : MonoBehaviour
     private readonly string _manifestFilePath = Path.GetFullPath("app.vrmanifest");
 
     public Unity_Overlay menuOverlay;
+    
+    [Space(10)] 
+    
     public GameObject profileContainer;
-
-    [Space(10)] public Text statusText;
+    
+    [Space(10)] 
+    
+    public Text statusText;
     public Text currentAvatarText;
 
-    [Space(10)] public Button copyFromPreviousButton;
+    [Space(10)] 
+    
+    public Button copyFromPreviousButton;
     public Button newButton;
     public Button cancelButton;
+    
+    [Space(10)] 
+    
+    public GameObject pagingContainer;
+    public Button NextPageButton;
+    public Button PrevPageButton;
 
     private string _previousAvatar;
     private string _currentAvatar;
