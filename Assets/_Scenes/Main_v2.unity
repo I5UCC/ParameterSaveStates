@@ -495,6 +495,9 @@ MonoBehaviour:
   copyFromPreviousButton: {fileID: 815986783}
   newButton: {fileID: 2062499451}
   cancelButton: {fileID: 1940461575}
+  pagingContainer: {fileID: 2133533004}
+  NextPageButton: {fileID: 1814403730}
+  PrevPageButton: {fileID: 516599520}
 --- !u!4 &49679440
 Transform:
   m_ObjectHideFlags: 0
@@ -2652,19 +2655,7 @@ MonoBehaviour:
         m_CallState: 2
   onKeyboardInput:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 49679439}
-        m_TargetAssemblyTypeName: ParameterSaveStates_Director, Assembly-CSharp
-        m_MethodName: OnKeyboardInput
-        m_Mode: 5
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!1 &391244498
 GameObject:
   m_ObjectHideFlags: 0
@@ -3830,7 +3821,7 @@ GameObject:
   - component: {fileID: 516599521}
   - component: {fileID: 516599520}
   m_Layer: 9
-  m_Name: Left
+  m_Name: Previous
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11991,7 +11982,7 @@ GameObject:
   - component: {fileID: 1814403731}
   - component: {fileID: 1814403730}
   m_Layer: 9
-  m_Name: Right
+  m_Name: Next
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
