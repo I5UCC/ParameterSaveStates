@@ -243,7 +243,7 @@ public class ProfileService
         return dict;
     }
 
-    public static int GetProfileIndex(string filePath)
+    private static int GetProfileIndex(string filePath)
     {
         var fileName = Path.GetFileName(filePath);
         var underscoreIndex = fileName.IndexOf('_');
@@ -254,7 +254,7 @@ public class ProfileService
         return int.MaxValue;
     }
 
-    public static string GetProfileDisplayName(string fileName)
+    private static string GetProfileDisplayName(string fileName)
     {
         var underscoreIndex = fileName.IndexOf('_');
         if (underscoreIndex > 0 && int.TryParse(fileName.Substring(0, underscoreIndex), out _))
@@ -275,5 +275,32 @@ public class ProfileService
             .Max();
 
         return maxIndex + 1;
+    }
+    
+    private string GetAvatarNameFilePath(string avatarId)
+    {
+        var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{avatarId}");
+        return Path.Combine(folderPath, "Name");
+    }
+
+    public string LoadAvatarName(string avatarId)
+    {
+        var filePath = GetAvatarNameFilePath(avatarId);
+        if (File.Exists(filePath))
+        {
+            return File.ReadAllText(filePath).Trim();
+        }
+        return null;
+    }
+
+    public void SaveAvatarName(string avatarId, string avatarName)
+    {
+        var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{avatarId}");
+        if (!Directory.Exists(folderPath))
+        {
+            Directory.CreateDirectory(folderPath);
+        }
+        var filePath = GetAvatarNameFilePath(avatarId);
+        File.WriteAllText(filePath, avatarName);
     }
 }

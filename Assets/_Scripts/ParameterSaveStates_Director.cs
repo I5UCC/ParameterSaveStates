@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Valve.VR;
 using PimDeWitte.UnityMainThreadDispatcher;
+using UnityEngine.Serialization;
 
 public class ParameterSaveStates_Director : MonoBehaviour
 {
@@ -29,8 +30,12 @@ public class ParameterSaveStates_Director : MonoBehaviour
     [Space(10)] 
     
     public GameObject pagingContainer;
-    public Button NextPageButton;
-    public Button PrevPageButton;
+    public Button nextPageButton;
+    public Button prevPageButton;
+    public Text pageNumberText;
+    
+    [Space(10)] 
+    public Button setNameButton;
 
     private string _previousAvatar;
     private string _currentAvatar;
@@ -38,6 +43,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
     private bool _steamVRKeyboardOpen;
     private string _profileText = string.Empty;
     private bool _initialized;
+    private bool _isSettingName;
 
     private OscService _oscService;
     private ProfileService _profileService;
@@ -81,9 +87,17 @@ public class ParameterSaveStates_Director : MonoBehaviour
         _mainThreadDispatcher.Enqueue(() =>
         {
             SetStatusText();
-            currentAvatarText.text = "Current Avatar: " + _currentAvatar;
+            UpdateCurrentAvatarDisplay();
             RefreshProfiles();
         });
+    }
+
+    private void UpdateCurrentAvatarDisplay()
+    {
+        var customName = _profileService.LoadAvatarName(_currentAvatar);
+        currentAvatarText.text = !string.IsNullOrWhiteSpace(customName) 
+            ? "Current Avatar: " + customName 
+            : "Current Avatar: " + _currentAvatar;
     }
 
     private void SetStatusText(string text = "")
@@ -134,13 +148,14 @@ public class ParameterSaveStates_Director : MonoBehaviour
     {
         var totalPages = _profileService.TotalPages;
         var hasMultiplePages = totalPages > 1;
-
+        
+        pageNumberText.text = totalPages.ToString();
         pagingContainer.SetActive(hasMultiplePages);
         
         if (hasMultiplePages)
         {
-            PrevPageButton.interactable = _profileService.CurrentPage > 0;
-            NextPageButton.interactable = _profileService.CurrentPage < totalPages - 1;
+            prevPageButton.interactable = _profileService.CurrentPage > 0;
+            nextPageButton.interactable = _profileService.CurrentPage < totalPages - 1;
         }
     }
 
@@ -221,9 +236,27 @@ public class ParameterSaveStates_Director : MonoBehaviour
         var finalText = new System.Text.StringBuilder(256);
         OpenVR.Overlay.GetKeyboardText(finalText, 256);
         _profileText = finalText.ToString();
-        SetStatusText("Saving Profile...");
 
-        StartCoroutine(SaveProfileDelayed());
+        if (_isSettingName)
+        {
+            _isSettingName = false;
+            if (!string.IsNullOrWhiteSpace(_profileText))
+            {
+                _profileService.SaveAvatarName(_currentAvatar, _profileText);
+                UpdateCurrentAvatarDisplay();
+            }
+            _profileText = string.Empty;
+            SetStatusText();
+            currentAvatarText.gameObject.SetActive(true);
+            cancelButton.gameObject.SetActive(false);
+            newButton.gameObject.SetActive(true);
+            copyFromPreviousButton.gameObject.SetActive(true);
+        }
+        else
+        {
+            SetStatusText("Saving Profile...");
+            StartCoroutine(SaveProfileDelayed());
+        }
     }
 
     public void CopyFromPreviousAvatar(Text buttontext)
@@ -251,6 +284,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
         OpenVR.Overlay.HideKeyboard();
         _steamVRKeyboardOpen = false;
+        _isSettingName = false;
         SetStatusText();
         currentAvatarText.gameObject.SetActive(true);
         cancelButton.gameObject.SetActive(false);
@@ -260,10 +294,18 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void NewProfile()
     {
-        ShowKeyboard();
-    } 
+        _isSettingName = false;
+        ShowKeyboard("Enter Profile Name");
+    }
 
-    private void ShowKeyboard()
+    public void SetAvatarName()
+    {
+        _isSettingName = true;
+        var currentName = _profileService.LoadAvatarName(_currentAvatar) ?? "";
+        ShowKeyboard("Enter Avatar Name", currentName);
+    }
+
+    private void ShowKeyboard(string description, string existingText = "")
     {
         if (OpenVR.Overlay == null || menuOverlay == null || menuOverlay.overlay == null) return;
 
@@ -282,9 +324,9 @@ public class ParameterSaveStates_Director : MonoBehaviour
             (int)EGamepadTextInputMode.k_EGamepadTextInputModeNormal,
             (int)EGamepadTextInputLineMode.k_EGamepadTextInputLineModeSingleLine,
             0,
-            "Enter Profile Name",
+            description,
             255,
-            _profileText,
+            existingText,
             0
         );
 
@@ -299,7 +341,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         newButton.gameObject.SetActive(false);
         copyFromPreviousButton.gameObject.SetActive(false);
 
-        SetStatusText("Enter Profile Name");
+        SetStatusText(description);
         Debug.Log("SteamVR keyboard opened successfully");
         _steamVRKeyboardOpen = true;
     }

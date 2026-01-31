@@ -12,14 +12,13 @@ public class OscService : IDisposable
     private OSCQueryService _oscQuery;
     private OscServer _receiver;
     private OscClient _sender;
-    private OSCQueryServiceProfile _queryServiceProfile;
-    private int _tcpPort;
-    private int _udpPort;
+    private readonly int _tcpPort;
+    private readonly int _udpPort;
 
     public event Action<OSCQueryServiceProfile> OnVRChatConnected;
     public event Action<string, string> OnAvatarChanged;
 
-    public OSCQueryServiceProfile QueryServiceProfile => _queryServiceProfile;
+    public OSCQueryServiceProfile QueryServiceProfile { get; private set; }
 
     public OscService()
     {
@@ -57,10 +56,10 @@ public class OscService : IDisposable
         Debug.Log($"\nfound service {profile.name} at {profile.port} on {profile.address}");
         if (!profile.name.Contains("VRChat")) return;
 
-        _queryServiceProfile = profile;
-        Debug.Log("QueryRoot: " + _queryServiceProfile.address + ":" + _queryServiceProfile.port);
+        QueryServiceProfile = profile;
+        Debug.Log("QueryRoot: " + QueryServiceProfile.address + ":" + QueryServiceProfile.port);
 
-        var test = Extensions.GetOSCTree(_queryServiceProfile.address, _queryServiceProfile.port);
+        var test = Extensions.GetOSCTree(QueryServiceProfile.address, QueryServiceProfile.port);
         test.Wait();
         var tree = test.Result;
         var node = tree.GetNodeWithPath("/avatar/change");
@@ -68,7 +67,7 @@ public class OscService : IDisposable
         Debug.Log("Current Avatar: " + currentAvatar);
 
         _oscQuery.OnOscQueryServiceAdded -= HandleOscQueryServiceAdded;
-        OnVRChatConnected?.Invoke(_queryServiceProfile);
+        OnVRChatConnected?.Invoke(QueryServiceProfile);
         OnAvatarChanged?.Invoke(null, currentAvatar);
     }
 
@@ -83,7 +82,7 @@ public class OscService : IDisposable
 
     public void ReconnectToVRChat()
     {
-        _queryServiceProfile = null;
+        QueryServiceProfile = null;
         _oscQuery.OnOscQueryServiceAdded += HandleOscQueryServiceAdded;
     }
 
