@@ -8,8 +8,8 @@ using UnityEngine.Serialization;
 
 public class ParameterSaveStates_Director : MonoBehaviour
 {
-    private readonly string _manifestFilePath = Path.GetFullPath("app.vrmanifest");
-
+    #region Unity Inspector Fields
+    
     public Unity_Overlay menuOverlay;
     
     [Space(10)] 
@@ -36,7 +36,13 @@ public class ParameterSaveStates_Director : MonoBehaviour
     
     [Space(10)] 
     public Button setNameButton;
+    
+    #endregion
 
+    #region Private Fields
+
+    private readonly string _manifestFilePath = Path.GetFullPath("app.vrmanifest");
+    
     private string _previousAvatar;
     private string _currentAvatar;
     private UnityMainThreadDispatcher _mainThreadDispatcher;
@@ -47,6 +53,10 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     private OscService _oscService;
     private ProfileService _profileService;
+
+    #endregion
+
+    #region Handler Methods
 
     private void Start()
     {
@@ -71,6 +81,165 @@ public class ParameterSaveStates_Director : MonoBehaviour
             menuOverlay.overlay.onKeyboardDone += OnKeyboardDone;
         }
     }
+    
+    public void OnApplicationQuit()
+    {
+        _oscService?.Dispose();
+    }
+
+    public void OnSteamVRConnect()
+    {
+        if (File.Exists(_manifestFilePath))
+        {
+            OpenVR.Applications.AddApplicationManifest(_manifestFilePath, false);
+        }
+    }
+
+    public void OnSteamVRDisconnect()
+    {
+        Debug.Log("Quitting!");
+        Application.Quit();
+    }
+
+    public void OnDashBoardOpen()
+    {
+        if (!_initialized) return;
+
+        _steamVRKeyboardOpen = false;
+        currentAvatarText.gameObject.SetActive(true);
+        cancelButton.gameObject.SetActive(false);
+        newButton.gameObject.SetActive(true);
+        copyFromPreviousButton.gameObject.SetActive(true);
+    }
+
+    public void OnDashBoardClose()
+    {
+        return;
+    }
+
+    #endregion
+
+    #region Button Handlers
+    
+    public void NextPage()
+    {
+        if (_profileService.NextPage())
+        {
+            DisplayCurrentPage();
+        }
+    }
+
+    public void PrevPage()
+    {
+        if (_profileService.PrevPage())
+        {
+            DisplayCurrentPage();
+        }
+    }
+
+    public void SetProfile(GameObject profile)
+    {
+        var displayName = profile.transform.GetChild(0).GetComponent<Text>().text;
+        _profileService.ApplyProfile(displayName);
+    }
+
+    public void DeleteProfile(GameObject profile)
+    {
+        var deleteText = profile.transform.GetChild(2).GetChild(0).GetComponent<Text>();
+        if (deleteText.text == "Delete")
+        {
+            deleteText.text = "Sure?";
+            return;
+        }
+
+        var displayName = profile.transform.GetChild(0).GetComponent<Text>().text;
+        if (_profileService.DeleteProfile(displayName))
+        {
+            profile.SetActive(false);
+            deleteText.text = "Delete";
+            RefreshProfiles();
+        }
+    }
+    
+    public void CopyFromPreviousAvatar(Text buttontext)
+    {
+        if (buttontext.text == "Copy From Last")
+        {
+            buttontext.text = "Sure?";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_previousAvatar))
+        {
+            Debug.LogError("No Previous Avatar set");
+            return;
+        }
+
+        _profileService.CopyProfilesFromAvatar(_previousAvatar, _currentAvatar);
+        RefreshProfiles();
+        buttontext.text = "Copy From Last";
+    }
+
+    public void Cancel()
+    {
+        if (!_steamVRKeyboardOpen) return;
+
+        OpenVR.Overlay.HideKeyboard();
+        _steamVRKeyboardOpen = false;
+        _isSettingName = false;
+        SetStatusText();
+        currentAvatarText.gameObject.SetActive(true);
+        cancelButton.gameObject.SetActive(false);
+        newButton.gameObject.SetActive(true);
+        copyFromPreviousButton.gameObject.SetActive(true);
+    }
+
+    public void NewProfile()
+    {
+        _isSettingName = false;
+        ShowKeyboard("Enter Profile Name");
+    }
+
+    public void SetAvatarName()
+    {
+        _isSettingName = true;
+        var currentName = _profileService.LoadAvatarName(_currentAvatar) ?? "";
+        ShowKeyboard("Enter Avatar Name", currentName);
+    }
+    
+    private System.Collections.IEnumerator SaveProfileDelayed()
+    {
+        yield return null;
+        SaveProfile();
+    }
+
+    private void SaveProfile()
+    {
+        try
+        {
+            if (_profileService.SaveProfile(_currentAvatar, _profileText))
+            {
+                _mainThreadDispatcher.Enqueue(() => { RefreshProfiles(); });
+            }
+
+            _profileText = string.Empty;
+            currentAvatarText.gameObject.SetActive(true);
+            cancelButton.gameObject.SetActive(false);
+            newButton.gameObject.SetActive(true);
+            copyFromPreviousButton.gameObject.SetActive(true);
+            SetStatusText();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError(e);
+            Debug.LogWarning("Lost Connection to VRChat, trying to reconnect...");
+            SetStatusText("Lost Connection to VRChat, trying to reconnect...");
+            _oscService.ReconnectToVRChat();
+        }
+    }
+    #endregion
+
+    #region Event Handlers
 
     private void OnVRChatConnected(VRC.OSCQuery.OSCQueryServiceProfile profile)
     {
@@ -92,12 +261,16 @@ public class ParameterSaveStates_Director : MonoBehaviour
         });
     }
 
+    #endregion
+
+    #region Overlay Methods
+
     private void UpdateCurrentAvatarDisplay()
     {
         var customName = _profileService.LoadAvatarName(_currentAvatar);
         currentAvatarText.text = !string.IsNullOrWhiteSpace(customName) 
-            ? "Current Avatar: " + customName 
-            : "Current Avatar: " + _currentAvatar;
+            ? $"Current Avatar: {customName}" 
+            : $"Current Avatar: {_currentAvatar}";
     }
 
     private void SetStatusText(string text = "")
@@ -158,77 +331,10 @@ public class ParameterSaveStates_Director : MonoBehaviour
             nextPageButton.interactable = _profileService.CurrentPage < totalPages - 1;
         }
     }
+    
+    #endregion
 
-    public void NextPage()
-    {
-        if (_profileService.NextPage())
-        {
-            DisplayCurrentPage();
-        }
-    }
-
-    public void PrevPage()
-    {
-        if (_profileService.PrevPage())
-        {
-            DisplayCurrentPage();
-        }
-    }
-
-    public void SetProfile(GameObject profile)
-    {
-        var displayName = profile.transform.GetChild(0).GetComponent<Text>().text;
-        _profileService.ApplyProfile(displayName);
-    }
-
-    public void DeleteProfile(GameObject profile)
-    {
-        var deleteText = profile.transform.GetChild(2).GetChild(0).GetComponent<Text>();
-        if (deleteText.text == "Delete")
-        {
-            deleteText.text = "Sure?";
-            return;
-        }
-
-        var displayName = profile.transform.GetChild(0).GetComponent<Text>().text;
-        if (_profileService.DeleteProfile(displayName))
-        {
-            profile.SetActive(false);
-            deleteText.text = "Delete";
-            RefreshProfiles();
-        }
-    }
-
-    private System.Collections.IEnumerator SaveProfileDelayed()
-    {
-        yield return null;
-        SaveProfile();
-    }
-
-    private void SaveProfile()
-    {
-        try
-        {
-            if (_profileService.SaveProfile(_currentAvatar, _profileText))
-            {
-                _mainThreadDispatcher.Enqueue(() => { RefreshProfiles(); });
-            }
-
-            _profileText = string.Empty;
-            currentAvatarText.gameObject.SetActive(true);
-            cancelButton.gameObject.SetActive(false);
-            newButton.gameObject.SetActive(true);
-            copyFromPreviousButton.gameObject.SetActive(true);
-            SetStatusText();
-        }
-        catch (Exception e)
-        {
-            Debug.LogError(e);
-            Debug.LogWarning("Lost Connection to VRChat, trying to reconnect...");
-            SetStatusText("Lost Connection to VRChat, trying to reconnect...");
-            _oscService.ReconnectToVRChat();
-        }
-    }
+    #region Keyboard events and methods
 
     private void OnKeyboardDone()
     {
@@ -257,52 +363,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
             SetStatusText("Saving Profile...");
             StartCoroutine(SaveProfileDelayed());
         }
-    }
-
-    public void CopyFromPreviousAvatar(Text buttontext)
-    {
-        if (buttontext.text == "Copy From Last")
-        {
-            buttontext.text = "Sure?";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(_previousAvatar))
-        {
-            Debug.LogError("No Previous Avatar set");
-            return;
-        }
-
-        _profileService.CopyProfilesFromAvatar(_previousAvatar, _currentAvatar);
-        RefreshProfiles();
-        buttontext.text = "Copy From Last";
-    }
-
-    public void Cancel()
-    {
-        if (!_steamVRKeyboardOpen) return;
-
-        OpenVR.Overlay.HideKeyboard();
-        _steamVRKeyboardOpen = false;
-        _isSettingName = false;
-        SetStatusText();
-        currentAvatarText.gameObject.SetActive(true);
-        cancelButton.gameObject.SetActive(false);
-        newButton.gameObject.SetActive(true);
-        copyFromPreviousButton.gameObject.SetActive(true);
-    }
-
-    public void NewProfile()
-    {
-        _isSettingName = false;
-        ShowKeyboard("Enter Profile Name");
-    }
-
-    public void SetAvatarName()
-    {
-        _isSettingName = true;
-        var currentName = _profileService.LoadAvatarName(_currentAvatar) ?? "";
-        ShowKeyboard("Enter Avatar Name", currentName);
     }
 
     private void ShowKeyboard(string description, string existingText = "")
@@ -345,39 +405,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
         Debug.Log("SteamVR keyboard opened successfully");
         _steamVRKeyboardOpen = true;
     }
-
-    public void OnApplicationQuit()
-    {
-        _oscService?.Dispose();
-    }
-
-    public void OnSteamVRConnect()
-    {
-        if (File.Exists(_manifestFilePath))
-        {
-            OpenVR.Applications.AddApplicationManifest(_manifestFilePath, false);
-        }
-    }
-
-    public void OnSteamVRDisconnect()
-    {
-        Debug.Log("Quitting!");
-        Application.Quit();
-    }
-
-    public void OnDashBoardOpen()
-    {
-        if (!_initialized) return;
-
-        _steamVRKeyboardOpen = false;
-        currentAvatarText.gameObject.SetActive(true);
-        cancelButton.gameObject.SetActive(false);
-        newButton.gameObject.SetActive(true);
-        copyFromPreviousButton.gameObject.SetActive(true);
-    }
-
-    public void OnDashBoardClose()
-    {
-        return;
-    }
+    
+    #endregion
 }
