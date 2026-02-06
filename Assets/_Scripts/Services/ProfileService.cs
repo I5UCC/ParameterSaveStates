@@ -18,6 +18,8 @@ public class ProfileService
     public List<string> AvailableProfiles => _availableProfiles;
     public int CurrentPage => _currentPage;
     public int TotalPages => _availableProfiles.Count == 0 ? 0 : (int)Math.Ceiling((double)_availableProfiles.Count / PageSize);
+    
+    private const string NameFile = "Name";
 
     public ProfileService(OscService oscService)
     {
@@ -37,6 +39,7 @@ public class ProfileService
 
         var files = Directory.GetFiles(folderPath, "*");
         var sortedFiles = files
+            .Where(f => Path.GetFileName(f) != NameFile)
             .Select(f => new { Path = f, Index = GetProfileIndex(f) })
             .OrderBy(f => f.Index)
             .Select(f => f.Path)
@@ -280,7 +283,7 @@ public class ProfileService
     private string GetAvatarNameFilePath(string avatarId)
     {
         var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{avatarId}");
-        return Path.Combine(folderPath, "Name");
+        return Path.Combine(folderPath, NameFile);
     }
 
     public string LoadAvatarName(string avatarId)
