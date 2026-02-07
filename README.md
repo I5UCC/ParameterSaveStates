@@ -1,6 +1,7 @@
 # ParameterSaveStates
 
-SteamVR Dashboard Application, which lets you create up to 20 profiles per avatar in VRChat.
+SteamVR Dashboard Application, which lets you create/apply parameter profiles per avatar in VRChat.
+You can set up e. g. two different outfits and save them as a profile and later apply them again.
 
 ## Features
 - Conveniently placed in the SteamVR Dashboard
