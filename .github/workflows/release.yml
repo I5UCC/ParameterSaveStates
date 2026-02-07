@@ -1,0 +1,88 @@
+﻿name: Build and Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    name: Build Unity Project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-StandaloneWindows64-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-StandaloneWindows64-
+
+      - name: Build Unity project
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: StandaloneWindows64
+          buildName: ParameterSaveStates
+          buildsPath: build
+
+      - name: Copy app.vrmanifest into build
+        run: cp app.vrmanifest build/StandaloneWindows64/
+
+      - name: Create zip archive
+        run: |
+          cd build/StandaloneWindows64
+          zip -r ../../ParameterSaveStates.zip .
+
+      - name: Create Inno Setup installer script
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          cat > installer.iss <<ISSEOF
+          [Setup]
+          AppName=ParameterSaveStates
+          AppVersion=$TAG
+          AppPublisher=i5ucc
+          DefaultDirName={autopf}\ParameterSaveStates
+          DefaultGroupName=ParameterSaveStates
+          OutputDir=.
+          OutputBaseFilename=ParameterSaveStates-Setup
+          Compression=lzma2
+          SolidCompression=yes
+          ArchitecturesInstallIn64BitMode=x64compatible
+
+          [Files]
+          Source: "build\StandaloneWindows64\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+          [Icons]
+          Name: "{group}\ParameterSaveStates"; Filename: "{app}\ParameterSaveStates.exe"
+          Name: "{group}\Uninstall ParameterSaveStates"; Filename: "{uninstallexe}"
+          Name: "{autodesktop}\ParameterSaveStates"; Filename: "{app}\ParameterSaveStates.exe"; Tasks: desktopicon
+
+          [Tasks]
+          Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"
+
+          [Run]
+          Filename: "{app}\ParameterSaveStates.exe"; Description: "Launch ParameterSaveStates"; Flags: nowait postinstall skipifsilent
+          ISSEOF
+          sed -i 's/^          //' installer.iss
+
+      - name: Build installer with Inno Setup
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
+        with:
+          path: installer.iss
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ParameterSaveStates.zip
+            ParameterSaveStates-Setup.exe
+          generate_release_notes: true
