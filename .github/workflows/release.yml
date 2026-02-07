@@ -22,6 +22,10 @@ jobs:
           key: Library-StandaloneWindows64-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: |
             Library-StandaloneWindows64-
+            Library-
+
+      - name: Create Library folder if missing
+        run: mkdir -p Library
 
       - name: Build Unity project
         uses: game-ci/unity-builder@v4
@@ -33,11 +37,6 @@ jobs:
           targetPlatform: StandaloneWindows64
           buildName: ParameterSaveStates
           buildsPath: build
-
-      - name: Copy app.vrmanifest into build
-        run: |
-          chmod -R u+w build/StandaloneWindows64/
-          cp app.vrmanifest build/StandaloneWindows64/
 
       - name: Create zip archive
         run: |

@@ -89,10 +89,31 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void OnSteamVRConnect()
     {
-        if (File.Exists(_manifestFilePath))
+        if (!File.Exists(_manifestFilePath))
         {
-            OpenVR.Applications.AddApplicationManifest(_manifestFilePath, false);
+            var manifest = @"{
+	""source"": ""builtin"",
+	""applications"": [
+		{
+			""app_key"": ""i5ucc.parametersavestates"",
+			""launch_type"": ""binary"",
+			""binary_path_windows"": ""./ParameterSaveStates.exe"",
+			""is_dashboard_overlay"": true,
+			""strings"": {
+				""en_us"": {
+					""name"": ""ParameterSaveStates"",
+					""description"": ""ParameterSaveStates for VRChat Avatars""
+				}
+			}
+		}
+	]
+}";
+            File.WriteAllText(_manifestFilePath, manifest);
+            Debug.Log($"Created missing VR manifest at: {_manifestFilePath}");
         }
+        
+        OpenVR.Applications.AddApplicationManifest(_manifestFilePath, false);
+        Debug.Log("Added VR manifest to SteamVR");
     }
 
     public void OnSteamVRDisconnect()
