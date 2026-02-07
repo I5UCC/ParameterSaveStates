@@ -35,7 +35,9 @@ jobs:
           buildsPath: build
 
       - name: Copy app.vrmanifest into build
-        run: cp app.vrmanifest build/StandaloneWindows64/
+        run: |
+          chmod -R u+w build/StandaloneWindows64/
+          cp app.vrmanifest build/StandaloneWindows64/
 
       - name: Create zip archive
         run: |
