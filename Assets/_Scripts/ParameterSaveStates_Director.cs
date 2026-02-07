@@ -110,6 +110,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         cancelButton.gameObject.SetActive(false);
         newButton.gameObject.SetActive(true);
         copyFromPreviousButton.gameObject.SetActive(true);
+        setNameButton.gameObject.SetActive(true);
     }
 
     public void OnDashBoardClose()
@@ -280,6 +281,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         statusText.gameObject.SetActive(active);
         profileContainer.SetActive(!active);
         pagingContainer.SetActive(!active);
+        setNameButton.gameObject.SetActive(!active);
     }
 
     private void RefreshProfiles()
