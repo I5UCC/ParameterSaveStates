@@ -42,6 +42,31 @@ jobs:
           buildName: ParameterSaveStates
           buildsPath: build
 
+      - name: Create app.vrmanifest in build directory
+        run: |
+          $manifest = @'
+          {
+          	"source": "builtin",
+          	"applications": [
+          		{
+          			"app_key": "i5ucc.parametersavestates",
+          			"launch_type": "binary",
+          			"binary_path_windows": "./ParameterSaveStates.exe",
+          			"is_dashboard_overlay": true,
+
+          			"strings": {
+          				"en_us": {
+          					"name": "ParameterSaveStates",
+          					"description": "ParameterSaveStates for VRChat Avatars"
+          				}
+          			}
+          		}
+          	]
+          }
+          '@
+          $manifest -replace '(?m)^          ', '' | Set-Content -Path build\StandaloneWindows64\app.vrmanifest -Encoding UTF8
+        shell: pwsh
+
       - name: Create zip archive
         run: Compress-Archive -Path build\StandaloneWindows64\* -DestinationPath ParameterSaveStates.zip
         shell: pwsh
@@ -89,4 +114,4 @@ jobs:
           files: |
             ParameterSaveStates.zip
             ParameterSaveStates-Setup.exe
-          generate_release_notes: true
+          generate_release_notes: false
