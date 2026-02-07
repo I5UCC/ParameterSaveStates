@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build Unity Project
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,7 +25,8 @@ jobs:
             Library-
 
       - name: Create Library folder if missing
-        run: mkdir -p Library
+        run: if (!(Test-Path Library)) { New-Item -ItemType Directory -Path Library }
+        shell: pwsh
 
       - name: Build Unity project
         uses: game-ci/unity-builder@v4
@@ -39,14 +40,13 @@ jobs:
           buildsPath: build
 
       - name: Create zip archive
-        run: |
-          cd build/StandaloneWindows64
-          zip -r ../../ParameterSaveStates.zip .
+        run: Compress-Archive -Path build\StandaloneWindows64\* -DestinationPath ParameterSaveStates.zip
+        shell: pwsh
 
       - name: Create Inno Setup installer script
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          cat > installer.iss <<ISSEOF
+          $TAG = "${{ github.ref_name }}"
+          @"
           [Setup]
           AppName=ParameterSaveStates
           AppVersion=$TAG
@@ -72,8 +72,8 @@ jobs:
 
           [Run]
           Filename: "{app}\ParameterSaveStates.exe"; Description: "Launch ParameterSaveStates"; Flags: nowait postinstall skipifsilent
-          ISSEOF
-          sed -i 's/^          //' installer.iss
+          "@ -replace '(?m)^          ', '' | Set-Content installer.iss
+        shell: pwsh
 
       - name: Build installer with Inno Setup
         uses: Minionguyjpro/Inno-Setup-Action@v1.2.4
