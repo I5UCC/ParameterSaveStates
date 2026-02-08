@@ -25,8 +25,10 @@ SOFTWARE.
 using System;
 using System.Runtime.InteropServices;
 using System.IO;
+#if UNITY_STANDALONE_WIN
 using System.Drawing;
 using System.Windows.Forms;
+#endif
 using UnityEngine;
 
 public class WindowController : MonoBehaviour
@@ -40,7 +42,9 @@ public class WindowController : MonoBehaviour
 
     private IntPtr winHandle;
 
+#if UNITY_STANDALONE_WIN
     private TrayForm trayForm;
+#endif
 
 
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
@@ -94,7 +98,7 @@ public class WindowController : MonoBehaviour
 
     public void CreateTray()
     {
-#if !UNITY_EDITOR
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
         if(trayForm == null)
         {
             trayForm = new TrayForm(trayIconTex); //CreateIcon(trayIconTex));
@@ -106,11 +110,13 @@ public class WindowController : MonoBehaviour
 
     public void DestroyTray()
     {
+#if UNITY_STANDALONE_WIN
         if (trayForm != null)
         {
             trayForm.Dispose();
             trayForm = null;
         }
+#endif
     }
 
     public void OnExit()
@@ -120,8 +126,10 @@ public class WindowController : MonoBehaviour
 
     public void ShowTrayIcon()
     {
+#if UNITY_STANDALONE_WIN
         if (trayForm != null)
             trayForm.ShowTray();
+#endif
     }
 
     public bool HideTaskbarIcon()
@@ -152,6 +160,7 @@ public class WindowController : MonoBehaviour
     }
 }
 
+#if UNITY_STANDALONE_WIN
 public class TrayForm : System.Windows.Forms.Form
 {
     public delegate void OnExitDel();
@@ -226,3 +235,4 @@ public class TrayForm : System.Windows.Forms.Form
         base.Dispose(disposing);
     }
 }
+#endif
