@@ -13,7 +13,7 @@ You can set up e. g. two different outfits and save them as a profile and later 
   - Find the blue icon that looks like a floppy disk in the SteamVR dashboard.
 - Autostart with SteamVR
   - You can start ParameterSaveStates in the same way you autostart e.g. OVRAS or XSO by going to SteamVR Settings > Startup/Shutdown > Choose Startup Overlay Apps > Turn ParameterSaveStates to ON
-- Save up to 20 profiles ***per avatar*** with custom naming
+- Save basically infinite profiles ***per avatar*** with custom naming
   - Setup the avatar the way you want to save it
   - hit `+ New`
   - Enter the Profiles Name
