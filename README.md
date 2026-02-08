@@ -1,13 +1,19 @@
-# ParameterSaveStates
+# <img width="32" height="32" alt="icon" src="https://github.com/user-attachments/assets/9ba3d647-d44a-4f8c-bc55-66fbd83215fb" />  ParameterSaveStates
 
-SteamVR Dashboard Application, which lets you create up to 20 profiles per avatar in VRChat.
+[![Github All Releases](https://img.shields.io/github/downloads/i5ucc/ParameterSaveStates/total.svg)](https://github.com/I5UCC/ParameterSaveStates/releases/latest) 
+[![GitHub release (latest by date)](https://img.shields.io/github/downloads/i5ucc/ParameterSaveStates/latest/total?label=Latest%20version%20downloads)](https://github.com/I5UCC/ParameterSaveStates/releases/latest)
+
+<img width="auto" height="35" alt="support_me_on_kofi_blue" src="https://github.com/user-attachments/assets/d641cbd2-3eeb-4c98-85ac-05d217c4a436" />
+
+SteamVR Dashboard Application, which lets you create/apply parameter profiles per avatar in VRChat.
+You can set up e. g. two different outfits and save them as a profile and later apply them again.
 
 ## Features
 - Conveniently placed in the SteamVR Dashboard
   - Find the blue icon that looks like a floppy disk in the SteamVR dashboard.
 - Autostart with SteamVR
   - You can start ParameterSaveStates in the same way you autostart e.g. OVRAS or XSO by going to SteamVR Settings > Startup/Shutdown > Choose Startup Overlay Apps > Turn ParameterSaveStates to ON
-- Save up to 20 profiles ***per avatar*** with custom naming
+- Save basically infinite profiles ***per avatar*** with custom naming
   - Setup the avatar the way you want to save it
   - hit `+ New`
   - Enter the Profiles Name
