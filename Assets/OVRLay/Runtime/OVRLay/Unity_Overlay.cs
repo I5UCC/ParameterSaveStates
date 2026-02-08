@@ -364,6 +364,9 @@ public class Unity_Overlay : MonoBehaviour
 	{
 		if(!overlay.created)
 			return;
+		
+		if(!isVisible)
+			return;
 
 		if(cameraForTexture)
 		{

@@ -11,29 +11,30 @@ using VRC.OSCQuery;
 public class ProfileService
 {
     private readonly OscService _oscService;
-    private List<string> _availableProfiles = new List<string>();
-    private int _currentPage = 0;
-    private const int PageSize = 20;
-
-    public List<string> AvailableProfiles => _availableProfiles;
-    public int CurrentPage => _currentPage;
-    public int TotalPages => _availableProfiles.Count == 0 ? 0 : (int)Math.Ceiling((double)_availableProfiles.Count / PageSize);
-    
     private const string NameFile = "Name";
+    
+    private List<string> AvailableProfiles { get; set; } = new List<string>();
+    
+    private int PageSize { get; }
+    
+    public int CurrentPage { get; private set; } = 0;
+    
+    public int TotalPages => AvailableProfiles.Count == 0 ? 0 : (int)Math.Ceiling((double)AvailableProfiles.Count / PageSize);
 
-    public ProfileService(OscService oscService)
+    public ProfileService(OscService oscService, int pageSize)
     {
         _oscService = oscService;
+        PageSize = pageSize;
     }
 
     public void LoadProfiles(string avatarId)
     {
-        _availableProfiles.Clear();
+        AvailableProfiles.Clear();
 
         var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{avatarId}");
         if (!Directory.Exists(folderPath))
         {
-            _currentPage = 0;
+            CurrentPage = 0;
             return;
         }
 
@@ -45,26 +46,26 @@ public class ProfileService
             .Select(f => f.Path)
             .ToList();
 
-        _availableProfiles.AddRange(sortedFiles);
+        AvailableProfiles.AddRange(sortedFiles);
 
         var totalPages = TotalPages;
-        if (_currentPage >= totalPages)
+        if (CurrentPage >= totalPages)
         {
-            _currentPage = Math.Max(0, totalPages - 1);
+            CurrentPage = Math.Max(0, totalPages - 1);
         }
     }
 
     public List<(string path, string displayName)> GetCurrentPageProfiles()
     {
         var result = new List<(string, string)>();
-        var startIndex = _currentPage * PageSize;
-        var endIndex = Math.Min(startIndex + PageSize, _availableProfiles.Count);
+        var startIndex = CurrentPage * PageSize;
+        var endIndex = Math.Min(startIndex + PageSize, AvailableProfiles.Count);
 
         for (var i = startIndex; i < endIndex; i++)
         {
-            var fileName = Path.GetFileName(_availableProfiles[i]);
+            var fileName = Path.GetFileName(AvailableProfiles[i]);
             var displayName = GetProfileDisplayName(fileName);
-            result.Add((_availableProfiles[i], displayName));
+            result.Add((AvailableProfiles[i], displayName));
         }
 
         return result;
@@ -72,9 +73,9 @@ public class ProfileService
 
     public bool NextPage()
     {
-        if (_currentPage < TotalPages - 1)
+        if (CurrentPage < TotalPages - 1)
         {
-            _currentPage++;
+            CurrentPage++;
             return true;
         }
         return false;
@@ -82,9 +83,9 @@ public class ProfileService
 
     public bool PrevPage()
     {
-        if (_currentPage > 0)
+        if (CurrentPage > 0)
         {
-            _currentPage--;
+            CurrentPage--;
             return true;
         }
         return false;
@@ -92,7 +93,7 @@ public class ProfileService
 
     public void ApplyProfile(string displayName)
     {
-        var profilePath = _availableProfiles.FirstOrDefault(p => GetProfileDisplayName(Path.GetFileName(p)) == displayName);
+        var profilePath = AvailableProfiles.FirstOrDefault(p => GetProfileDisplayName(Path.GetFileName(p)) == displayName);
 
         if (string.IsNullOrEmpty(profilePath) || !File.Exists(profilePath))
         {
@@ -125,7 +126,7 @@ public class ProfileService
 
     public bool DeleteProfile(string displayName)
     {
-        var profilePath = _availableProfiles.FirstOrDefault(p => GetProfileDisplayName(Path.GetFileName(p)) == displayName);
+        var profilePath = AvailableProfiles.FirstOrDefault(p => GetProfileDisplayName(Path.GetFileName(p)) == displayName);
 
         if (string.IsNullOrEmpty(profilePath) || !File.Exists(profilePath))
         {
@@ -158,6 +159,10 @@ public class ProfileService
             Directory.CreateDirectory(folderPath);
         }
 
+        // Check if a profile with this name already exists — override it instead of creating a duplicate
+        var existingProfile = AvailableProfiles.FirstOrDefault(p =>
+            GetProfileDisplayName(Path.GetFileName(p)) == profileName);
+
         using UnityWebRequest request =
             UnityWebRequest.Get($"http://{queryProfile.address}:{queryProfile.port}/");
         var operation = request.SendWebRequest();
@@ -175,8 +180,18 @@ public class ProfileService
         var dict = GetParametersJson(node, queryProfile);
 
         var json = JsonConvert.SerializeObject(dict, Formatting.Indented);
-        var indexedFileName = $"{nextIndex}_{profileName}";
-        var filePath = Path.Combine(folderPath, indexedFileName);
+
+        string filePath;
+        if (!string.IsNullOrEmpty(existingProfile) && File.Exists(existingProfile))
+        {
+            filePath = existingProfile;
+        }
+        else
+        {
+            var indexedFileName = $"{nextIndex}_{profileName}";
+            filePath = Path.Combine(folderPath, indexedFileName);
+        }
+
         File.WriteAllText(filePath, json);
 
         return true;
@@ -269,9 +284,9 @@ public class ProfileService
 
     private int GetNextProfileIndex()
     {
-        if (_availableProfiles.Count == 0) return 1;
+        if (AvailableProfiles.Count == 0) return 1;
 
-        var maxIndex = _availableProfiles
+        var maxIndex = AvailableProfiles
             .Select(GetProfileIndex)
             .Where(i => i != int.MaxValue)
             .DefaultIfEmpty(0)
@@ -305,5 +320,26 @@ public class ProfileService
         }
         var filePath = GetAvatarNameFilePath(avatarId);
         File.WriteAllText(filePath, avatarName);
+    }
+
+    public bool RenameProfile(string displayName, string nameOverride)
+    {
+        var profilePath = AvailableProfiles.FirstOrDefault(p => GetProfileDisplayName(Path.GetFileName(p)) == displayName);
+
+        if (profilePath == null || !File.Exists(profilePath))
+            return false;
+
+        var index = GetProfileIndex(profilePath);
+        var directory = Path.GetDirectoryName(profilePath);
+        var newFileName = $"{index}_{nameOverride}";
+        var newPath = Path.Combine(directory, newFileName);
+
+        File.Move(profilePath, newPath);
+        return true;
+    }
+
+    public bool OverrideProfile(string avatarId, string displayName)
+    {
+        return SaveProfile(avatarId, displayName);
     }
 }
