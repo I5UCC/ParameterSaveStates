@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build Unity Project
+  build-windows:
+    name: Build Unity Project (Windows)
     runs-on: windows-latest
     steps:
       - name: Checkout repository
@@ -55,7 +55,7 @@ jobs:
           			"is_dashboard_overlay": true,
 
           			"strings": {
-          				"en_us": {
+          				"en_us": { 
           					"name": "ParameterSaveStates",
           					"description": "ParameterSaveStates for VRChat Avatars"
           				}
@@ -108,10 +108,99 @@ jobs:
         with:
           path: installer.iss
 
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            ParameterSaveStates.zip
+            ParameterSaveStates-Setup.exe
+
+  build-linux:
+    name: Build Unity Project (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-StandaloneLinux64-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-StandaloneLinux64-
+            Library-
+
+      - name: Create Library folder if missing
+        run: mkdir -p Library
+
+      - name: Build Unity project
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: StandaloneLinux64
+          buildName: ParameterSaveStates
+          buildsPath: build
+
+      - name: Create app.vrmanifest in build directory
+        run: |
+          cat > build/StandaloneLinux64/app.vrmanifest << 'EOF'
+          {
+          	"source": "builtin",
+          	"applications": [
+          		{
+          			"app_key": "i5ucc.parametersavestates",
+          			"launch_type": "binary",
+          			"binary_path_linux": "./ParameterSaveStates",
+          			"is_dashboard_overlay": true,
+
+          			"strings": {
+          				"en_us": {
+          					"name": "ParameterSaveStates",
+          					"description": "ParameterSaveStates for VRChat Avatars"
+          				}
+          			}
+          		}
+          	]
+          }
+          EOF
+          sed -i 's/^          //' build/StandaloneLinux64/app.vrmanifest
+
+      - name: Create zip archive
+        run: cd build/StandaloneLinux64 && zip -r ../../ParameterSaveStates-Linux.zip .
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: ParameterSaveStates-Linux.zip
+
+  release:
+    name: Create GitHub Release
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-build
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ParameterSaveStates.zip
             ParameterSaveStates-Setup.exe
+            ParameterSaveStates-Linux.zip
           generate_release_notes: false
