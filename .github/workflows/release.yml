@@ -148,29 +148,29 @@ jobs:
           buildName: ParameterSaveStates
           buildsPath: build
 
-      - name: Create app.vrmanifest in build directory
-        run: |
-          cat > build/StandaloneLinux64/app.vrmanifest << 'EOF'
-          {
-          	"source": "builtin",
-          	"applications": [
-          		{
-          			"app_key": "i5ucc.parametersavestates",
-          			"launch_type": "binary",
-          			"binary_path_linux": "./ParameterSaveStates",
-          			"is_dashboard_overlay": true,
-
-          			"strings": {
-          				"en_us": {
-          					"name": "ParameterSaveStates",
-          					"description": "ParameterSaveStates for VRChat Avatars"
-          				}
-          			}
-          		}
-          	]
-          }
-          EOF
-          sed -i 's/^          //' build/StandaloneLinux64/app.vrmanifest
+#      - name: Create app.vrmanifest in build directory
+#        run: |
+#          cat > build/StandaloneLinux64/app.vrmanifest << 'EOF'
+#          {
+#          	"source": "builtin",
+#          	"applications": [
+#          		{
+#          			"app_key": "i5ucc.parametersavestates",
+#          			"launch_type": "binary",
+#          			"binary_path_linux": "./ParameterSaveStates",
+#          			"is_dashboard_overlay": true,
+#
+#          			"strings": {
+#          				"en_us": {
+#          					"name": "ParameterSaveStates",
+#          					"description": "ParameterSaveStates for VRChat Avatars"
+#          				}
+#          			}
+#          		}
+#          	]
+#          }
+#          EOF
+#          sed -i 's/^          //' build/StandaloneLinux64/app.vrmanifest
 
       - name: Create zip archive
         run: cd build/StandaloneLinux64 && zip -r ../../ParameterSaveStates-Linux.zip .
