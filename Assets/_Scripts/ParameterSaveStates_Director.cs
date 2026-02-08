@@ -7,7 +7,7 @@ using PimDeWitte.UnityMainThreadDispatcher;
 
 public class ParameterSaveStates_Director : MonoBehaviour
 {
-    enum KeyboardMode
+    private enum KeyboardMode
     {
         None,
         NewProfile,
@@ -75,11 +75,13 @@ public class ParameterSaveStates_Director : MonoBehaviour
         _profileService = new ProfileService(_oscService, profileContainer.transform.childCount);
         
         SetStatusText("Waiting for VRChat to connect...");
-
+        
+        pagingContainer.SetActive(false);
         currentAvatarText.gameObject.SetActive(false);
         cancelButton.gameObject.SetActive(false);
         newButton.gameObject.SetActive(false);
         copyFromPreviousButton.gameObject.SetActive(false);
+        setNameButton.gameObject.SetActive(false);
 
         _oscService.OnVRChatConnected += OnVRChatConnected;
         _oscService.OnAvatarChanged += OnAvatarChanged;
@@ -103,6 +105,9 @@ public class ParameterSaveStates_Director : MonoBehaviour
         
         OpenVR.Applications.AddApplicationManifest(_manifestFilePath, false);
         Debug.Log("Added VR manifest to SteamVR");
+        
+        if (menuOverlay != null && menuOverlay.cameraForTexture != null)
+            menuOverlay.cameraForTexture.enabled = false;
     }
 
     public void OnSteamVRDisconnect()
@@ -124,10 +129,15 @@ public class ParameterSaveStates_Director : MonoBehaviour
         newButton.gameObject.SetActive(true);
         copyFromPreviousButton.gameObject.SetActive(true);
         setNameButton.gameObject.SetActive(true);
+        copyFromPreviousButton.gameObject.GetDisplayNameText().text = "Copy From Last";
+        RefreshProfiles();
     }
 
     public void OnDashBoardClose()
     {
+        OpenVR.Overlay.HideKeyboard();
+        _steamVRKeyboardOpen = false;
+        
         if (menuOverlay != null && menuOverlay.cameraForTexture != null)
             menuOverlay.cameraForTexture.enabled = false;
     }
@@ -206,6 +216,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         }
         EnableEditButtons(profile, false);
 
+        _keyboardMode = KeyboardMode.RenameProfile;
         _profileToRename = profile.GetDisplayNameText().text;
         ShowKeyboard("Enter New Profile Name", _profileToRename);
     }
@@ -252,16 +263,16 @@ public class ParameterSaveStates_Director : MonoBehaviour
         _steamVRKeyboardOpen = false;
         _keyboardMode = KeyboardMode.None;
         SetStatusText();
-        currentAvatarText.gameObject.SetActive(true);
-        cancelButton.gameObject.SetActive(false);
-        newButton.gameObject.SetActive(true);
-        copyFromPreviousButton.gameObject.SetActive(true);
     }
 
     public void NewProfile()
     {
         _keyboardMode = KeyboardMode.NewProfile;
         ShowKeyboard("Enter Profile Name");
+        cancelButton.gameObject.SetActive(true);
+        newButton.gameObject.SetActive(false);
+        copyFromPreviousButton.gameObject.SetActive(false);
+        pagingContainer.SetActive(false);
     }
 
     public void SetAvatarName()
@@ -270,22 +281,12 @@ public class ParameterSaveStates_Director : MonoBehaviour
         var currentName = _profileService.LoadAvatarName(_currentAvatar) ?? "";
         ShowKeyboard("Enter Avatar Name", currentName);
     }
-    
-    private System.Collections.IEnumerator SaveProfileDelayed()
-    {
-        yield return null;
-        SaveProfile();
-    }
 
     private void SaveProfile()
     {
         try
         {
-            if (_profileService.SaveProfile(_currentAvatar, _profileText))
-            {
-                _mainThreadDispatcher.Enqueue(() => { RefreshProfiles(); });
-            }
-
+            _profileService.SaveProfile(_currentAvatar, _profileText);
             _profileText = string.Empty;
             currentAvatarText.gameObject.SetActive(true);
             cancelButton.gameObject.SetActive(false);
@@ -308,6 +309,11 @@ public class ParameterSaveStates_Director : MonoBehaviour
     private void OnVRChatConnected(VRC.OSCQuery.OSCQueryServiceProfile profile)
     {
         _initialized = true;
+        _mainThreadDispatcher.Enqueue(() =>
+        {
+            SetStatusText();
+            DisplayCurrentPage();
+        });
     }
 
     private void OnAvatarChanged(string previousAvatar, string newAvatar)
@@ -343,8 +349,12 @@ public class ParameterSaveStates_Director : MonoBehaviour
         statusText.text = text;
         statusText.gameObject.SetActive(active);
         profileContainer.SetActive(!active);
-        pagingContainer.SetActive(!active);
         setNameButton.gameObject.SetActive(!active);
+        currentAvatarText.gameObject.SetActive(true);
+        cancelButton.gameObject.SetActive(active);
+        newButton.gameObject.SetActive(!active);
+        copyFromPreviousButton.gameObject.SetActive(!active);
+        if (!active) DisplayCurrentPage();
     }
 
     private void RefreshProfiles()
@@ -357,11 +367,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
         _profileService.LoadProfiles(_currentAvatar);
         DisplayCurrentPage();
-
-        currentAvatarText.gameObject.SetActive(true);
-        cancelButton.gameObject.SetActive(false);
-        newButton.gameObject.SetActive(true);
-        copyFromPreviousButton.gameObject.SetActive(true);
     }
 
     private void DisplayCurrentPage()
@@ -379,10 +384,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
             profile.GetDisplayNameText().text = profiles[i].displayName;
         }
 
-        _mainThreadDispatcher.Enqueue(() =>
-        {
-            UpdatePagingButtons();
-        });
+        UpdatePagingButtons();
     }
 
     private void UpdatePagingButtons()
@@ -420,18 +422,16 @@ public class ParameterSaveStates_Director : MonoBehaviour
                 }
                 _profileText = string.Empty;
                 SetStatusText();
-                currentAvatarText.gameObject.SetActive(true);
-                cancelButton.gameObject.SetActive(false);
-                newButton.gameObject.SetActive(true);
-                copyFromPreviousButton.gameObject.SetActive(true);
                 break;
             case KeyboardMode.NewProfile:
                 SetStatusText("Saving Profile...");
-                StartCoroutine(SaveProfileDelayed());
+                SaveProfile();
+                RefreshProfiles();
                 break;
             case KeyboardMode.RenameProfile:
                 _profileService.RenameProfile(_profileToRename, _profileText);
                 _profileToRename = string.Empty;
+                RefreshProfiles();
                 break;
             case KeyboardMode.None:
                 SetStatusText();

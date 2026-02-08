@@ -448,6 +448,8 @@ public class Unity_Overlay : MonoBehaviour
 
 	void UpdateUnityMouseSim()
 	{
+		if(float.IsNaN(mousePos.x) || float.IsNaN(mousePos.y) || reverseAspect == 0f)
+			return;
 		var pd = uiHandler.pD;
 
 		pd.position = mousePos;
