@@ -3,7 +3,7 @@
 [![Github All Releases](https://img.shields.io/github/downloads/i5ucc/ParameterSaveStates/total.svg)](https://github.com/I5UCC/ParameterSaveStates/releases/latest) 
 [![GitHub release (latest by date)](https://img.shields.io/github/downloads/i5ucc/ParameterSaveStates/latest/total?label=Latest%20version%20downloads)](https://github.com/I5UCC/ParameterSaveStates/releases/latest)
 
-<img width="auto" height="35" alt="support_me_on_kofi_blue" src="https://github.com/user-attachments/assets/d641cbd2-3eeb-4c98-85ac-05d217c4a436" />
+<a href='https://ko-fi.com/i5ucc' target='_blank'><img width="auto" height="35" alt="support_me_on_kofi_blue" src="https://github.com/user-attachments/assets/d641cbd2-3eeb-4c98-85ac-05d217c4a436" /></a>
 
 SteamVR Dashboard Application, which lets you create/apply parameter profiles per avatar in VRChat.
 You can set up e. g. two different outfits and save them as a profile and later apply them again.
