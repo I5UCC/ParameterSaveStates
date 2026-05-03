@@ -421,8 +421,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
     {
         var customName = _profileService.LoadAvatarName(_currentAvatar);
         currentAvatarText.text = !string.IsNullOrWhiteSpace(customName) 
-            ? $"Current Avatar: {customName}" 
-            : $"Current Avatar: {_currentAvatar}";
+            ? customName
+            : _currentAvatar;
     }
 
     private void SetStatusText(string text = "")

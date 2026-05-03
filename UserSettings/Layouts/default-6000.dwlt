@@ -1059,9 +1059,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 0.24667363, y: 0.46033454, z: 0.022851542}
+    m_Target: {x: 0.12418714, y: 0.46033454, z: 0.038656324}
     speed: 2
-    m_Value: {x: 0.24667363, y: 0.46033454, z: 0.022851542}
+    m_Value: {x: 0.12418714, y: 0.46033454, z: 0.038656324}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1193,16 +1193,7 @@ MonoBehaviour:
       m_LastClickedID:
         m_Data: 0
       m_ExpandedIDs:
-      - m_Data: -27050
-      - m_Data: -26922
-      - m_Data: -26654
       - m_Data: -1282
-      - m_Data: -12
-      - m_Data: 24928
-      - m_Data: 24970
-      - m_Data: 25098
-      - m_Data: 25156
-      - m_Data: 25846
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1250,9 +1241,9 @@ MonoBehaviour:
     m_TextWithWhitespace: "Animator\u200B"
   m_Pos:
     serializedVersion: 2
-    x: 421
+    x: 417
     y: 79
-    width: 1582
+    width: 1553
     height: 885
   m_SerializedDataModeController:
     m_DataMode: 0
@@ -1358,6 +1349,11 @@ MonoBehaviour:
       m_Data: 52636
     m_ExpandedIDs:
     - m_Data: 0
+    - m_Data: 26084
+    - m_Data: 26086
+    - m_Data: 26088
+    - m_Data: 26090
+    - m_Data: 26092
     - m_Data: 26094
     - m_Data: 26096
     - m_Data: 26098
@@ -1373,11 +1369,6 @@ MonoBehaviour:
     - m_Data: 26118
     - m_Data: 26120
     - m_Data: 26122
-    - m_Data: 26124
-    - m_Data: 26126
-    - m_Data: 26128
-    - m_Data: 26130
-    - m_Data: 26132
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1410,6 +1401,11 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
+    - m_Data: 26084
+    - m_Data: 26086
+    - m_Data: 26088
+    - m_Data: 26090
+    - m_Data: 26092
     - m_Data: 26094
     - m_Data: 26096
     - m_Data: 26098
@@ -1425,11 +1421,6 @@ MonoBehaviour:
     - m_Data: 26118
     - m_Data: 26120
     - m_Data: 26122
-    - m_Data: 26124
-    - m_Data: 26126
-    - m_Data: 26128
-    - m_Data: 26130
-    - m_Data: 26132
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
