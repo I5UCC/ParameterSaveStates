@@ -43,6 +43,11 @@ public class ParameterSaveStates_Director : MonoBehaviour
     
     [Space(10)] 
     public Button setNameButton;
+
+    [Header("Web UI")]
+    [SerializeField] private bool enableWebUi = true;
+    [SerializeField] private int webUiPort = 17663;
+    [SerializeField] private WindowController windowController;
     
     #endregion
 
@@ -62,6 +67,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     private OscService _oscService;
     private ProfileService _profileService;
+    private ProfileService _webProfileService;
+    private WebUiService _webUiService;
 
     #endregion
 
@@ -87,6 +94,34 @@ public class ParameterSaveStates_Director : MonoBehaviour
         _oscService.OnAvatarChanged += OnAvatarChanged;
         _oscService.Initialize();
 
+        if (enableWebUi)
+        {
+            if (webUiPort <= 0)
+            {
+                Debug.LogWarning("Web UI port is invalid. Web UI will not start.");
+            }
+            else
+            {
+                var indexPath = Path.Combine(Application.streamingAssetsPath, "WebUi", "index.html");
+                _webProfileService = new ProfileService(_oscService, profileContainer.transform.childCount);
+                _webUiService = new WebUiService(
+                    _webProfileService,
+                    _oscService,
+                    _mainThreadDispatcher,
+                    () => _currentAvatar,
+                    () => _previousAvatar,
+                    webUiPort,
+                    indexPath);
+                _webUiService.Start();
+                ConfigureTrayMenu();
+
+                if (!IsSteamVrRunning())
+                {
+                    OpenWebUi();
+                }
+            }
+        }
+
         if (menuOverlay != null && menuOverlay.overlay != null)
         {
             menuOverlay.overlay.onKeyboardDone += OnKeyboardDone;
@@ -96,6 +131,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
     
     public void OnApplicationQuit()
     {
+        _webUiService?.Dispose();
         _oscService?.Dispose();
     }
 
@@ -112,7 +148,12 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void OnSteamVRDisconnect()
     {
-        Debug.Log("Quitting!");
+        Debug.Log("SteamVR disconnected");
+        if (enableWebUi && _webUiService != null && _webUiService.IsRunning)
+        {
+            OpenWebUi();
+            return;
+        }
         Application.Quit();
     }
 
@@ -143,6 +184,47 @@ public class ParameterSaveStates_Director : MonoBehaviour
     }
 
     #endregion
+
+    private void ConfigureTrayMenu()
+    {
+        if (windowController == null)
+        {
+            windowController = FindObjectOfType<WindowController>();
+        }
+
+        if (windowController != null)
+        {
+            windowController.SetOpenWebUiAction(OpenWebUi);
+        }
+    }
+
+    private void OpenWebUi()
+    {
+        if (!enableWebUi || _webUiService == null || !_webUiService.IsRunning)
+            return;
+
+        void Open() => Application.OpenURL(_webUiService.BaseUrl);
+
+        if (_mainThreadDispatcher != null)
+        {
+            _mainThreadDispatcher.Enqueue(Open);
+        }
+        else
+        {
+            Open();
+        }
+    }
+
+    private static bool IsSteamVrRunning()
+    {
+#if UNITY_STANDALONE_WIN
+        return System.Diagnostics.Process.GetProcessesByName("vrserver").Length > 0
+               || System.Diagnostics.Process.GetProcessesByName("vrmonitor").Length > 0
+               || System.Diagnostics.Process.GetProcessesByName("steamvr").Length > 0;
+#else
+        return true;
+#endif
+    }
 
     #region Button Handlers
     

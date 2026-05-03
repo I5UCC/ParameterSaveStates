@@ -71,6 +71,13 @@ public class ProfileService
         return result;
     }
 
+    public List<string> GetAllProfileDisplayNames()
+    {
+        return AvailableProfiles
+            .Select(path => GetProfileDisplayName(Path.GetFileName(path)))
+            .ToList();
+    }
+
     public bool NextPage()
     {
         if (CurrentPage < TotalPages - 1)

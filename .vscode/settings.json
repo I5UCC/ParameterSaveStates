@@ -68,5 +68,6 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "ParameterSaveStates.sln"
+    "dotnet.defaultSolution": "ParameterSaveStates.sln",
+    "dotnet.preferCSharpExtension": true
 }

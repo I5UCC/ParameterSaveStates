@@ -104,6 +104,18 @@ public class WindowController : MonoBehaviour
 #endif
     }
 
+    public void SetOpenWebUiAction(Action action)
+    {
+        if (!hasTrayIcon)
+            return;
+
+        if (trayForm == null)
+            CreateTray();
+
+        if (trayForm != null)
+            trayForm.SetOpenWebUiCallback(action);
+    }
+
     public void DestroyTray()
     {
         if (trayForm != null)
@@ -159,13 +171,21 @@ public class TrayForm : System.Windows.Forms.Form
 
     public OnExitDel onExitCallback;
     public OnShowWindowDel onShowWindow;
+    public Action onOpenWebUi;
 
     private System.Windows.Forms.ContextMenuStrip trayMenu;
     private NotifyIcon trayIcon;
+    private ToolStripMenuItem openWebUiItem;
 
     public TrayForm(Texture2D tex = null)
     {
         trayMenu = new System.Windows.Forms.ContextMenuStrip();
+
+        openWebUiItem = new ToolStripMenuItem("Open Web UI", CreateBitmap(Texture2D.whiteTexture));
+        openWebUiItem.Enabled = false;
+        openWebUiItem.Click += OnOpenWebUi;
+        trayMenu.Items.Add(openWebUiItem);
+        trayMenu.Items.Add(new ToolStripSeparator());
 
         trayMenu.Items.Add("Exit", CreateBitmap(Texture2D.whiteTexture), OnExit);
 
@@ -216,6 +236,18 @@ public class TrayForm : System.Windows.Forms.Form
     protected void OnExit(object sender, EventArgs e)
     {
         onExitCallback.Invoke();
+    }
+
+    public void SetOpenWebUiCallback(Action callback)
+    {
+        onOpenWebUi = callback;
+        if (openWebUiItem != null)
+            openWebUiItem.Enabled = callback != null;
+    }
+
+    protected void OnOpenWebUi(object sender, EventArgs e)
+    {
+        onOpenWebUi?.Invoke();
     }
 
     protected override void Dispose(bool disposing)
