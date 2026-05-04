@@ -100,32 +100,52 @@
     const setAvatarNameBtn = document.getElementById("setAvatarNameBtn");
     const themeToggle = document.getElementById("themToggle");
 
-    function initTheme() {
-      const savedTheme = localStorage.getItem("theme") || "dark";
-      if (savedTheme === "light") {
+    function applyTheme(theme) {
+      const normalized = theme === "light" ? "light" : "dark";
+      if (normalized === "light") {
         document.documentElement.classList.remove("dark");
         themeToggle.textContent = "☀️ Light";
       } else {
         document.documentElement.classList.add("dark");
         themeToggle.textContent = "🌙 Dark";
+      }
+      return normalized;
+    }
+
+    async function loadTheme() {
+      try {
+        const data = await api("/api/theme");
+        const normalized = applyTheme(data.theme);
+        localStorage.setItem("theme", normalized);
+      } catch (error) {
+        console.warn("Failed to load theme from server:", error);
+        const savedTheme = localStorage.getItem("theme") || "dark";
+        applyTheme(savedTheme);
+      }
+    }
+
+    async function saveTheme(theme) {
+      try {
+        await api("/api/theme", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ theme })
+        });
+      } catch (error) {
+        console.warn("Failed to save theme to server:", error);
       }
     }
 
     function toggleTheme() {
       const isDark = document.documentElement.classList.contains("dark");
-      if (isDark) {
-        document.documentElement.classList.remove("dark");
-        localStorage.setItem("theme", "light");
-        themeToggle.textContent = "☀️ Light";
-      } else {
-        document.documentElement.classList.add("dark");
-        localStorage.setItem("theme", "dark");
-        themeToggle.textContent = "🌙 Dark";
-      }
+      const nextTheme = isDark ? "light" : "dark";
+      const normalized = applyTheme(nextTheme);
+      localStorage.setItem("theme", normalized);
+      saveTheme(normalized);
     }
 
     themeToggle.addEventListener("click", toggleTheme);
-    initTheme();
+    loadTheme();
     const statusBaseClasses = "mb-4 rounded-lg border px-4 py-3 text-sm";
     const statusOkClasses = "border-slate-800 bg-slate-900/80";
     const statusErrorClasses = "border-rose-500/60 bg-rose-950/40 text-rose-100";

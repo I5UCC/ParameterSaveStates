@@ -27,6 +27,10 @@ public sealed class WebUiService : IDisposable
     private readonly string _indexFilePath;
     private readonly int _port;
 
+    private const string ProfilesRootFolderName = "Profiles";
+    private const string WebUiSettingsFileName = "WebUiSettings.json";
+    private const string DefaultTheme = "dark";
+
     private readonly HttpListener _listener = new HttpListener();
     private readonly CancellationTokenSource _cts = new CancellationTokenSource();
     private Thread _listenerThread;
@@ -263,6 +267,20 @@ public sealed class WebUiService : IDisposable
                 return;
             }
 
+            if (method == "GET" && path.Equals("/api/theme", StringComparison.OrdinalIgnoreCase))
+            {
+                WriteOk(context.Response, new { theme = LoadTheme() });
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/theme", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var theme = body.Value<string>("theme");
+                WriteOk(context.Response, new { theme = SaveTheme(theme) });
+                return;
+            }
+
             WriteJson(context.Response, new ApiResponse
             {
                 ok = false,
@@ -457,6 +475,78 @@ public sealed class WebUiService : IDisposable
 
         _profileService.SaveAvatarName(currentAvatar, name);
         return new { avatarName = name };
+    }
+
+    private string LoadTheme()
+    {
+        var settingsPath = GetWebUiSettingsFilePath();
+        if (!File.Exists(settingsPath))
+        {
+            return DefaultTheme;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(settingsPath);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return DefaultTheme;
+            }
+
+            var settings = JObject.Parse(json);
+            var theme = settings.Value<string>("theme");
+            if (string.Equals(theme, "light", StringComparison.OrdinalIgnoreCase))
+            {
+                return "light";
+            }
+
+            if (string.Equals(theme, "dark", StringComparison.OrdinalIgnoreCase))
+            {
+                return "dark";
+            }
+
+            Debug.LogWarning("Web UI theme setting is invalid. Falling back to dark.");
+            return DefaultTheme;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Failed to load Web UI theme setting: {ex.Message}");
+            return DefaultTheme;
+        }
+    }
+
+    private string SaveTheme(string theme)
+    {
+        if (string.IsNullOrWhiteSpace(theme))
+        {
+            throw new InvalidOperationException("Theme is required");
+        }
+
+        var normalized = theme.Trim().ToLowerInvariant();
+        if (normalized != "light" && normalized != "dark")
+        {
+            throw new InvalidOperationException("Theme must be 'light' or 'dark'");
+        }
+
+        var settings = new JObject
+        {
+            ["theme"] = normalized
+        };
+
+        var settingsPath = GetWebUiSettingsFilePath();
+        File.WriteAllText(settingsPath, settings.ToString(Formatting.Indented));
+        return normalized;
+    }
+
+    private static string GetWebUiSettingsFilePath()
+    {
+        var profilesRootPath = Path.Combine(Application.persistentDataPath, ProfilesRootFolderName);
+        if (!Directory.Exists(profilesRootPath))
+        {
+            Directory.CreateDirectory(profilesRootPath);
+        }
+
+        return Path.Combine(profilesRootPath, WebUiSettingsFileName);
     }
 
     private List<string> GetProfileNames(string avatarId)
