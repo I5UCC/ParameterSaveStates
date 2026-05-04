@@ -7,7 +7,7 @@ using Valve.VR;
 
 public class Unity_SteamVR_Handler : MonoBehaviour 
 {
-	public float steamVRPollTime = 0.05f;
+	public float steamVRPollTime = 0.5f;
 
 	public bool connectedToSteam = false;
 
@@ -24,6 +24,13 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 	[Space(10)]
 
 	public bool debugLog = false;
+
+	[Space(10)]
+	[Header("Performance")]
+	[Space(10)]
+	public int activeTargetFrameRate = 30;
+	public int idleTargetFrameRate = 1;
+	public bool throttleWhenDashboardClosed = true;
 
 	[Space(10)]
 
@@ -44,6 +51,7 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 	[HideInInspector] public OVR_Pose_Handler poseHandler { get { return ovrHandler.poseHandler; } }
 
 	private float lastSteamVRPollTime = 0f;
+	private bool isDashboardOpen = true;
 
 	void Start()
 	{
@@ -51,7 +59,7 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 		lastSteamVRPollTime = steamVRPollTime + 1f;
 		ovrHandler.onOpenVRChange += OnOpenVRChange;
 
-		Application.targetFrameRate = 91;
+		UpdateTargetFrameRate();
 
 		ovrHandler.onVREvent += VREventHandler;
 	}
@@ -59,6 +67,7 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 	void OnOpenVRChange(bool connected) 
 	{
 		connectedToSteam = connected;
+		UpdateTargetFrameRate();
 
 		if(!connected)
 		{
@@ -70,6 +79,8 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 
 	void OnDashboardChange(bool open)
 	{
+		isDashboardOpen = open;
+		UpdateTargetFrameRate();
 		if(open)
 			onDashboardOpen.Invoke();
 		else
@@ -130,23 +141,28 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 		{
 			lastSteamVRPollTime = 0f;
 
-			Debug.Log("Checking to see if SteamVR Is Running...");
+			if (debugLog)
+				Debug.Log("Checking to see if SteamVR Is Running...");
 			if(System.Diagnostics.Process.GetProcessesByName("vrserver").Length <= 0)
 			{
-				Debug.Log("VRServer not Running!");
+				if (debugLog)
+					Debug.Log("VRServer not Running!");
 				return false;
 			}
 
-			Debug.Log("Starting Up SteamVR Connection...");
+			if (debugLog)
+				Debug.Log("Starting Up SteamVR Connection...");
 
 			if( !ovrHandler.StartupOpenVR() )
 			{
-				Debug.Log("Connection Failed :( !");
+				if (debugLog)
+					Debug.Log("Connection Failed :( !");
 				return false;
 			}
 			else
 			{
-				Debug.Log("Connected to SteamVR!");
+				if (debugLog)
+					Debug.Log("Connected to SteamVR!");
 				
 				onSteamVRConnect.Invoke();
 				ovrHandler.onDashboardChange += OnDashboardChange;
@@ -162,5 +178,22 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 	{
 		if(ovrHandler.OpenVRConnected)
 			ovrHandler.ShutDownOpenVR();
+	}
+
+	void UpdateTargetFrameRate()
+	{
+		if(!connectedToSteam)
+		{
+			Application.targetFrameRate = idleTargetFrameRate;
+			return;
+		}
+
+		if(!throttleWhenDashboardClosed)
+		{
+			Application.targetFrameRate = activeTargetFrameRate;
+			return;
+		}
+
+		Application.targetFrameRate = isDashboardOpen ? activeTargetFrameRate : idleTargetFrameRate;
 	}
 }

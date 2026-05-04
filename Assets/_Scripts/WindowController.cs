@@ -21,6 +21,7 @@ public class WindowController : MonoBehaviour
     private const float WebUiWindowSizeSampleInterval = 1f;
     private const float WebUiWindowApplyTimeout = 5f;
     private const int WebUiWindowSizeTolerance = 4;
+    private const float WebUiWindowHandleSearchInterval = 0.5f;
 
     private const int GWL_EXSTYLE = -0x14;
     private const int WS_EX_TOOLWINDOW = 0x0080;
@@ -40,6 +41,7 @@ public class WindowController : MonoBehaviour
     private bool hasPendingWebUiWindowSize;
     private float pendingWebUiWindowSizeUntilTime;
     private float nextWebUiWindowSizeSampleTime;
+    private float nextWebUiWindowHandleSearchTime;
     private int lastSavedWebUiWindowWidth;
     private int lastSavedWebUiWindowHeight;
     private bool hasLastSavedWebUiWindowSize;
@@ -105,11 +107,15 @@ public class WindowController : MonoBehaviour
     void Update()
     {
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
-        if (webUiWindowHandle == IntPtr.Zero)
+        if (webUiWindowHandle == IntPtr.Zero && (hasPendingWebUiWindowSize || webUiWindowProcess != null))
         {
-            if (TryFindWebUiWindowHandle(out var foundHandle))
+            if (Time.unscaledTime >= nextWebUiWindowHandleSearchTime)
             {
-                webUiWindowHandle = foundHandle;
+                nextWebUiWindowHandleSearchTime = Time.unscaledTime + WebUiWindowHandleSearchInterval;
+                if (TryFindWebUiWindowHandle(out var foundHandle))
+                {
+                    webUiWindowHandle = foundHandle;
+                }
             }
         }
 
@@ -441,6 +447,7 @@ public class WindowController : MonoBehaviour
         pendingWebUiWindowHeight = height;
         pendingWebUiWindowSizeUntilTime = Time.unscaledTime + WebUiWindowApplyTimeout;
         hasPendingWebUiWindowSize = true;
+        nextWebUiWindowHandleSearchTime = 0f;
     }
 
     private static bool TryFindWebUiWindowHandle(out IntPtr handle)
