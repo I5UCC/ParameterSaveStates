@@ -189,13 +189,22 @@ public class ParameterSaveStates_Director : MonoBehaviour
     {
         if (windowController == null)
         {
-            windowController = FindObjectOfType<WindowController>();
+            windowController = FindAnyObjectByType<WindowController>();
         }
 
         if (windowController != null)
         {
             windowController.SetOpenWebUiAction(OpenWebUi);
+            windowController.SetOpenWebUiBrowserAction(OpenWebUiBrowser);
         }
+    }
+
+    private void OpenWebUiBrowser()
+    {
+        if (!enableWebUi || _webUiService == null || !_webUiService.IsRunning)
+            return;
+
+        Application.OpenURL(_webUiService.BaseUrl);
     }
 
     private void OpenWebUi()
@@ -203,7 +212,16 @@ public class ParameterSaveStates_Director : MonoBehaviour
         if (!enableWebUi || _webUiService == null || !_webUiService.IsRunning)
             return;
 
-        void Open() => Application.OpenURL(_webUiService.BaseUrl);
+        void Open()
+        {
+            if (windowController != null
+                && windowController.TryShowWebUiWindow(_webUiService.BaseUrl))
+            {
+                return;
+            }
+
+            OpenWebUiBrowser();
+        }
 
         if (_mainThreadDispatcher != null)
         {

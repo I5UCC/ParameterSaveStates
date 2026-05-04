@@ -1,4 +1,4 @@
-﻿/*
+/*
 MIT License
 
 Copyright (c) 2017 Ben Otter
@@ -37,10 +37,12 @@ public class WindowController : MonoBehaviour
     private const int GWL_EXSTYLE = -0x14;
     private const int WS_EX_TOOLWINDOW = 0x0080;
     private const int SWP_HIDEWINDOW = 0x0080;
+    private const uint SW_RESTORE = 9;
 
     private IntPtr winHandle;
 
     private TrayForm trayForm;
+    private System.Diagnostics.Process webUiWindowProcess;
 
 
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
@@ -50,6 +52,7 @@ public class WindowController : MonoBehaviour
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool ShowWindow(IntPtr hWnd, uint nCmdShow);
     [DllImport("user32.dll")] static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
     [DllImport("user32.dll", SetLastError = true)] static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetForegroundWindow(IntPtr hWnd);
 
 #else
 
@@ -58,6 +61,7 @@ public class WindowController : MonoBehaviour
     static int GetWindowLong(IntPtr hWnd, int nIndex) { return 0; }
     private static bool SetWindowPos(IntPtr hwnd, int hWndInsertAfter, int x, int Y, int cx, int cy, int wFlags) { return true; }
     private static bool ShowWindow(IntPtr hWnd, uint nCmdShow) { return true; }
+    private static bool SetForegroundWindow(IntPtr hWnd) { return true; }
 
 #endif
     void Start()
@@ -116,8 +120,40 @@ public class WindowController : MonoBehaviour
             trayForm.SetOpenWebUiCallback(action);
     }
 
+    public void SetOpenWebUiBrowserAction(Action action)
+    {
+        if (!hasTrayIcon)
+            return;
+
+        if (trayForm == null)
+            CreateTray();
+
+        if (trayForm != null)
+            trayForm.SetOpenWebUiBrowserCallback(action);
+    }
+
     public void DestroyTray()
     {
+        if (webUiWindowProcess != null)
+        {
+            try
+            {
+                if (!webUiWindowProcess.HasExited)
+                {
+                    webUiWindowProcess.CloseMainWindow();
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Failed to close Web UI app window: {ex.Message}");
+            }
+            finally
+            {
+                webUiWindowProcess.Dispose();
+                webUiWindowProcess = null;
+            }
+        }
+
         if (trayForm != null)
         {
             trayForm.Dispose();
@@ -134,6 +170,81 @@ public class WindowController : MonoBehaviour
     {
         if (trayForm != null)
             trayForm.ShowTray();
+    }
+
+    public bool TryShowWebUiWindow(string url)
+    {
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+        if (string.IsNullOrWhiteSpace(url))
+            return false;
+
+        if (webUiWindowProcess != null)
+        {
+            try
+            {
+                if (!webUiWindowProcess.HasExited)
+                {
+                    webUiWindowProcess.Refresh();
+                    var handle = webUiWindowProcess.MainWindowHandle;
+                    if (handle != IntPtr.Zero)
+                    {
+                        ShowWindow(handle, SW_RESTORE);
+                        SetForegroundWindow(handle);
+                    }
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Failed to focus existing Web UI window: {ex.Message}");
+            }
+            finally
+            {
+                webUiWindowProcess.Dispose();
+                webUiWindowProcess = null;
+            }
+        }
+
+        if (TryLaunchBrowserAppWindow("msedge.exe", url, out var edgeProcess))
+        {
+            webUiWindowProcess = edgeProcess;
+            return true;
+        }
+
+        if (TryLaunchBrowserAppWindow("chrome.exe", url, out var chromeProcess))
+        {
+            webUiWindowProcess = chromeProcess;
+            return true;
+        }
+
+        return false;
+#else
+        return false;
+#endif
+    }
+
+    private static bool TryLaunchBrowserAppWindow(string browserExe, string url, out System.Diagnostics.Process process)
+    {
+        process = null;
+        try
+        {
+            var startInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = browserExe,
+                Arguments = $"--app=\"{url}\"",
+                UseShellExecute = true
+            };
+
+            process = System.Diagnostics.Process.Start(startInfo);
+            return process != null;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Failed to start {browserExe} as app window: {ex.Message}");
+            process?.Dispose();
+            process = null;
+            return false;
+        }
     }
 
     public bool HideTaskbarIcon()
@@ -172,19 +283,25 @@ public class TrayForm : System.Windows.Forms.Form
     public OnExitDel onExitCallback;
     public OnShowWindowDel onShowWindow;
     public Action onOpenWebUi;
+    public Action onOpenWebUiBrowser;
 
     private System.Windows.Forms.ContextMenuStrip trayMenu;
     private NotifyIcon trayIcon;
     private ToolStripMenuItem openWebUiItem;
+    private ToolStripMenuItem openWebUiItemBrowser;
 
     public TrayForm(Texture2D tex = null)
     {
         trayMenu = new System.Windows.Forms.ContextMenuStrip();
 
         openWebUiItem = new ToolStripMenuItem("Open Web UI", CreateBitmap(Texture2D.whiteTexture));
+        openWebUiItemBrowser = new ToolStripMenuItem("Open Web UI (Browser)", CreateBitmap(Texture2D.whiteTexture));
         openWebUiItem.Enabled = false;
+        openWebUiItemBrowser.Enabled = false;
         openWebUiItem.Click += OnOpenWebUi;
+        openWebUiItemBrowser.Click += OnOpenWebUiBrowser;
         trayMenu.Items.Add(openWebUiItem);
+        trayMenu.Items.Add(openWebUiItemBrowser);
         trayMenu.Items.Add(new ToolStripSeparator());
 
         trayMenu.Items.Add("Exit", CreateBitmap(Texture2D.whiteTexture), OnExit);
@@ -241,13 +358,27 @@ public class TrayForm : System.Windows.Forms.Form
     public void SetOpenWebUiCallback(Action callback)
     {
         onOpenWebUi = callback;
+
         if (openWebUiItem != null)
             openWebUiItem.Enabled = callback != null;
+    }
+
+    public void SetOpenWebUiBrowserCallback(Action callback)
+    {
+        onOpenWebUiBrowser = callback;
+
+        if (openWebUiItemBrowser != null)
+            openWebUiItemBrowser.Enabled = callback != null;
     }
 
     protected void OnOpenWebUi(object sender, EventArgs e)
     {
         onOpenWebUi?.Invoke();
+    }
+
+    protected void OnOpenWebUiBrowser(object sender, EventArgs e)
+    {
+        onOpenWebUiBrowser?.Invoke();
     }
 
     protected override void Dispose(bool disposing)
