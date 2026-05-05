@@ -30,6 +30,7 @@ public class WindowController : MonoBehaviour
     private const int SWP_NOMOVE = 0x0002;
     private const int SWP_NOZORDER = 0x0004;
     private const int SWP_NOACTIVATE = 0x0010;
+    private const uint WM_CLOSE = 0x0010;
 
     private IntPtr winHandle;
 
@@ -45,6 +46,7 @@ public class WindowController : MonoBehaviour
     private int lastSavedWebUiWindowWidth;
     private int lastSavedWebUiWindowHeight;
     private bool hasLastSavedWebUiWindowSize;
+    private bool quitRequestedFromTray;
 
 
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
@@ -56,6 +58,7 @@ public class WindowController : MonoBehaviour
     [DllImport("user32.dll", SetLastError = true)] static extern int GetWindowLong(IntPtr hWnd, int nIndex);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetWindowRect(IntPtr hWnd, out WinRect lpRect);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
     [DllImport("user32.dll")] private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
@@ -71,6 +74,7 @@ public class WindowController : MonoBehaviour
     private static bool ShowWindow(IntPtr hWnd, uint nCmdShow) { return true; }
     private static bool SetForegroundWindow(IntPtr hWnd) { return true; }
     private static bool GetWindowRect(IntPtr hWnd, out WinRect lpRect) { lpRect = default; return false; }
+    private static bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam) { return false; }
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
     private static bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam) { return false; }
     private static int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount) { return 0; }
@@ -106,6 +110,14 @@ public class WindowController : MonoBehaviour
 
     void Update()
     {
+        if (quitRequestedFromTray)
+        {
+            quitRequestedFromTray = false;
+            DestroyTray();
+            UnityEngine.Application.Quit();
+            return;
+        }
+
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
         if (webUiWindowHandle == IntPtr.Zero && (hasPendingWebUiWindowSize || webUiWindowProcess != null))
         {
@@ -222,6 +234,11 @@ public class WindowController : MonoBehaviour
                         SaveWebUiWindowSize(width, height);
                     }
                     webUiWindowProcess.CloseMainWindow();
+                    if (!webUiWindowProcess.WaitForExit(1500))
+                    {
+                        webUiWindowProcess.Kill();
+                        webUiWindowProcess.WaitForExit(1500);
+                    }
                 }
             }
             catch (Exception ex)
@@ -235,6 +252,12 @@ public class WindowController : MonoBehaviour
             }
         }
 
+        if (webUiWindowHandle != IntPtr.Zero)
+        {
+            PostMessage(webUiWindowHandle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            webUiWindowHandle = IntPtr.Zero;
+        }
+
         if (trayForm != null)
         {
             trayForm.Dispose();
@@ -244,7 +267,7 @@ public class WindowController : MonoBehaviour
 
     public void OnExit()
     {
-        UnityEngine.Application.Quit();
+        quitRequestedFromTray = true;
     }
 
     public void ShowTrayIcon()
