@@ -42,21 +42,6 @@
     </div>
 
     <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-      <label for="avatarNameInput" class="text-sm font-semibold text-slate-900 dark:text-slate-200">Avatar name</label>
-      <div class="mt-3 flex flex-wrap items-center gap-3">
-        <input
-          id="avatarNameInput"
-          type="text"
-          placeholder="Friendly name"
-          class="flex-1 min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-        />
-        <button id="setAvatarNameBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:hover:bg-sky-400">
-          Set name
-        </button>
-      </div>
-    </div>
-
-    <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
       <label for="newProfileInput" class="text-sm font-semibold text-slate-900 dark:text-slate-200">New profile</label>
       <div class="mt-3 flex flex-wrap items-center gap-3">
         <input
@@ -67,9 +52,6 @@
         />
         <button id="saveProfileBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:hover:bg-sky-400">
           Save current
-        </button>
-        <button id="copyFromPreviousBtn" class="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 dark:focus:ring-slate-400">
-          Copy from last avatar
         </button>
       </div>
       <div class="mt-3 flex flex-wrap items-center gap-3">
@@ -100,7 +82,6 @@
     const previousAvatarEl = document.getElementById("previousAvatar");
     const connectionStateEl = document.getElementById("connectionState");
     const profilesEl = document.getElementById("profiles");
-    const avatarNameInput = document.getElementById("avatarNameInput");
     const newProfileInput = document.getElementById("newProfileInput");
     const copyFromAvatarSelect = document.getElementById("copyFromAvatarSelect");
 
@@ -108,7 +89,6 @@
     const saveProfileBtn = document.getElementById("saveProfileBtn");
     const copyFromPreviousBtn = document.getElementById("copyFromPreviousBtn");
     const copyFromAvatarBtn = document.getElementById("copyFromAvatarBtn");
-    const setAvatarNameBtn = document.getElementById("setAvatarNameBtn");
     const themeToggle = document.getElementById("themToggle");
 
     function applyTheme(theme) {
@@ -197,9 +177,6 @@
         currentAvatarEl.textContent = formatAvatarDisplay(data.currentAvatar, data.avatarName);
         previousAvatarEl.textContent = formatAvatarDisplay(data.previousAvatar, data.previousAvatarName);
         connectionStateEl.textContent = data.connected ? "Connected" : "Waiting for VRChat";
-        if (document.activeElement !== avatarNameInput) {
-          avatarNameInput.value = data.avatarName || "";
-        }
         renderProfiles(data.profiles || []);
         setStatus(data.connected ? "Ready" : "Waiting for VRChat to connect...", false);
       } catch (error) {
@@ -340,10 +317,6 @@
       }
       runProfileAction("/api/profiles/copy-from-avatar", { avatarId });
     });
-    setAvatarNameBtn.addEventListener("click", () => {
-      runProfileAction("/api/avatar/name", { name: avatarNameInput.value });
-    });
-
     loadCopySourceAvatars();
     loadStatus();
     setInterval(loadStatus, 2000);

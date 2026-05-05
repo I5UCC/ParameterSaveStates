@@ -11,8 +11,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
     {
         None,
         NewProfile,
-        RenameProfile,
-        SetAvatarName
+        RenameProfile
     }
     
     #region Unity Inspector Fields
@@ -42,7 +41,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
     public Text pageNumberText;
     
     [Space(10)] 
-    public Button setNameButton;
 
     [Header("Web UI")]
     [SerializeField] private bool enableWebUi = true;
@@ -88,7 +86,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
         cancelButton.gameObject.SetActive(false);
         newButton.gameObject.SetActive(false);
         copyFromPreviousButton.gameObject.SetActive(false);
-        setNameButton.gameObject.SetActive(false);
 
         if (menuOverlay != null && menuOverlay.cameraForTexture != null)
             menuOverlay.cameraForTexture.enabled = false;
@@ -175,7 +172,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
         cancelButton.gameObject.SetActive(false);
         newButton.gameObject.SetActive(true);
         copyFromPreviousButton.gameObject.SetActive(true);
-        setNameButton.gameObject.SetActive(true);
         copyFromPreviousButton.gameObject.GetDisplayNameText().text = "Copy From Last";
         RefreshProfiles();
     }
@@ -381,13 +377,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
         pagingContainer.SetActive(false);
     }
 
-    public void SetAvatarName()
-    {
-        _keyboardMode = KeyboardMode.SetAvatarName;
-        var currentName = _profileService.LoadAvatarName(_currentAvatar) ?? "";
-        ShowKeyboard("Enter Avatar Name", currentName);
-    }
-
     private void SaveProfile()
     {
         try
@@ -455,7 +444,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
         statusText.text = text;
         statusText.gameObject.SetActive(active);
         profileContainer.SetActive(!active);
-        setNameButton.gameObject.SetActive(!active);
         currentAvatarText.gameObject.SetActive(true);
         cancelButton.gameObject.SetActive(active);
         newButton.gameObject.SetActive(!active);
@@ -520,15 +508,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
         switch (_keyboardMode)
         {
-            case KeyboardMode.SetAvatarName:
-                if (!string.IsNullOrWhiteSpace(_profileText))
-                {
-                    _profileService.SaveAvatarName(_currentAvatar, _profileText);
-                    UpdateCurrentAvatarDisplay();
-                }
-                _profileText = string.Empty;
-                SetStatusText();
-                break;
             case KeyboardMode.NewProfile:
                 SetStatusText("Saving Profile...");
                 SaveProfile();

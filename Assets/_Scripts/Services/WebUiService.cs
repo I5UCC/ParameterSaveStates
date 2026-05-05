@@ -273,14 +273,6 @@ public sealed class WebUiService : IDisposable
                 return;
             }
 
-            if (method == "POST" && path.Equals("/api/avatar/name", StringComparison.OrdinalIgnoreCase))
-            {
-                var body = ReadJsonBody(request);
-                var name = body.Value<string>("name");
-                WriteOk(context.Response, RunOnMainThread(() => SetAvatarName(name)));
-                return;
-            }
-
             if (method == "GET" && path.Equals("/api/theme", StringComparison.OrdinalIgnoreCase))
             {
                 WriteOk(context.Response, new { theme = LoadTheme() });
@@ -509,23 +501,6 @@ public sealed class WebUiService : IDisposable
 
         _profileService.CopyProfilesFromAvatar(sourceAvatarId, currentAvatar);
         return new { profiles = GetProfileNames(currentAvatar) };
-    }
-
-    private object SetAvatarName(string name)
-    {
-        var currentAvatar = _getCurrentAvatar?.Invoke();
-        if (string.IsNullOrWhiteSpace(currentAvatar))
-        {
-            throw new InvalidOperationException("No current avatar detected");
-        }
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new InvalidOperationException("Avatar name is required");
-        }
-
-        _profileService.SaveAvatarName(currentAvatar, name);
-        return new { avatarName = name };
     }
 
     private string LoadTheme()

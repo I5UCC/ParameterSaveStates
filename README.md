@@ -30,7 +30,7 @@ When the app is running, a local web interface is available at:
 
 http://127.0.0.1:17663
 
-This UI mirrors the dashboard features: save/apply/override/rename/delete profiles, set avatar names, and copy profiles from the last avatar.
+This UI mirrors the dashboard features: save/apply/override/rename/delete profiles, automatically shows avatar names when available from VRChat OSC metadata, and copy profiles from the last avatar.
 
 If SteamVR is not running, the app opens the web UI automatically. You can also open it from the tray menu.
 You can choose whether this opens in your default browser or in a dedicated app window via the `Open Web UI` button in the tray menu.

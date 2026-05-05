@@ -13,6 +13,8 @@ public class ProfileService
     private readonly OscService _oscService;
     private const string NameFile = "Name";
     private const string ProfilesRootFolderName = "Profiles";
+    private const string AvatarMetadataFolderName = "Avatars";
+    private const string AvatarMetadataFilePattern = "avtr_*.json";
     
     private List<string> AvailableProfiles { get; set; } = new List<string>();
     
@@ -311,23 +313,161 @@ public class ProfileService
 
     public string LoadAvatarName(string avatarId)
     {
-        var filePath = GetAvatarNameFilePath(avatarId);
-        if (File.Exists(filePath))
+        if (string.IsNullOrWhiteSpace(avatarId))
         {
-            return File.ReadAllText(filePath).Trim();
+            return null;
         }
-        return null;
+
+        var savedAvatarName = ReadSavedAvatarName(avatarId);
+        var metadataAvatarName = FindAvatarNameInVrChatOscCache(avatarId);
+        if (string.IsNullOrWhiteSpace(metadataAvatarName))
+        {
+            return savedAvatarName;
+        }
+
+        if (string.Equals(savedAvatarName, metadataAvatarName, StringComparison.Ordinal))
+        {
+            return savedAvatarName;
+        }
+
+        SaveAvatarName(avatarId, metadataAvatarName);
+        return metadataAvatarName;
     }
 
     public void SaveAvatarName(string avatarId, string avatarName)
     {
+        if (string.IsNullOrWhiteSpace(avatarId) || string.IsNullOrWhiteSpace(avatarName))
+        {
+            return;
+        }
+
         var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
         if (!Directory.Exists(folderPath))
         {
             Directory.CreateDirectory(folderPath);
         }
         var filePath = GetAvatarNameFilePath(avatarId);
-        File.WriteAllText(filePath, avatarName);
+        File.WriteAllText(filePath, avatarName.Trim());
+    }
+
+    private string ReadSavedAvatarName(string avatarId)
+    {
+        var filePath = GetAvatarNameFilePath(avatarId);
+        if (!File.Exists(filePath))
+        {
+            return null;
+        }
+
+        var value = File.ReadAllText(filePath).Trim();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static string FindAvatarNameInVrChatOscCache(string avatarId)
+    {
+        var oscRootPath = GetVrChatOscRootPath();
+        if (string.IsNullOrWhiteSpace(oscRootPath) || !Directory.Exists(oscRootPath))
+        {
+            return null;
+        }
+
+        var userDirectories = Directory.GetDirectories(oscRootPath, "usr_*");
+        foreach (var userDirectory in userDirectories)
+        {
+            var avatarsDirectory = Path.Combine(userDirectory, AvatarMetadataFolderName);
+            if (!Directory.Exists(avatarsDirectory))
+            {
+                continue;
+            }
+
+            var exactPath = Path.Combine(avatarsDirectory, $"{avatarId}.json");
+            if (File.Exists(exactPath) && TryReadAvatarNameFromMetadataFile(exactPath, avatarId, out var exactAvatarName))
+            {
+                return exactAvatarName;
+            }
+
+            var metadataFiles = Directory.GetFiles(avatarsDirectory, AvatarMetadataFilePattern);
+            foreach (var metadataFile in metadataFiles)
+            {
+                if (string.Equals(metadataFile, exactPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (TryReadAvatarNameFromMetadataFile(metadataFile, avatarId, out var avatarName))
+                {
+                    return avatarName;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static bool TryReadAvatarNameFromMetadataFile(string metadataFilePath, string avatarId, out string avatarName)
+    {
+        avatarName = null;
+
+        string json;
+        try
+        {
+            json = File.ReadAllText(metadataFilePath);
+        }
+        catch (IOException ex)
+        {
+            Debug.LogWarning($"Failed to read avatar metadata file '{metadataFilePath}': {ex.Message}");
+            return false;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Debug.LogWarning($"Access denied reading avatar metadata file '{metadataFilePath}': {ex.Message}");
+            return false;
+        }
+
+        VrChatAvatarMetadata metadata;
+        try
+        {
+            metadata = JsonConvert.DeserializeObject<VrChatAvatarMetadata>(json);
+        }
+        catch (JsonException ex)
+        {
+            Debug.LogWarning($"Failed to parse avatar metadata file '{metadataFilePath}': {ex.Message}");
+            return false;
+        }
+
+        if (metadata == null || !string.Equals(metadata.id, avatarId, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(metadata.name))
+        {
+            return false;
+        }
+
+        avatarName = metadata.name.Trim();
+        return true;
+    }
+
+    private static string GetVrChatOscRootPath()
+    {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        var localAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (string.IsNullOrWhiteSpace(localAppDataPath))
+        {
+            return null;
+        }
+
+        var localLowPath = Path.GetFullPath(Path.Combine(localAppDataPath, "..", "LocalLow"));
+        return Path.Combine(localLowPath, "VRChat", "VRChat", "OSC");
+#else
+        return null;
+#endif
+    }
+
+    private sealed class VrChatAvatarMetadata
+    {
+        public string id;
+        public string name;
     }
 
     public List<(string avatarId, string avatarName)> GetAvatarsWithSavedProfiles()
