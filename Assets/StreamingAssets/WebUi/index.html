@@ -72,6 +72,15 @@
           Copy from last avatar
         </button>
       </div>
+      <div class="mt-3 flex flex-wrap items-center gap-3">
+        <select
+          id="copyFromAvatarSelect"
+          class="flex-1 min-w-[280px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        ></select>
+        <button id="copyFromAvatarBtn" class="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 dark:focus:ring-slate-400">
+          Copy from selected avatar
+        </button>
+      </div>
     </div>
 
     <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
@@ -93,10 +102,12 @@
     const profilesEl = document.getElementById("profiles");
     const avatarNameInput = document.getElementById("avatarNameInput");
     const newProfileInput = document.getElementById("newProfileInput");
+    const copyFromAvatarSelect = document.getElementById("copyFromAvatarSelect");
 
     const refreshBtn = document.getElementById("refreshBtn");
     const saveProfileBtn = document.getElementById("saveProfileBtn");
     const copyFromPreviousBtn = document.getElementById("copyFromPreviousBtn");
+    const copyFromAvatarBtn = document.getElementById("copyFromAvatarBtn");
     const setAvatarNameBtn = document.getElementById("setAvatarNameBtn");
     const themeToggle = document.getElementById("themToggle");
 
@@ -196,6 +207,52 @@
       }
     }
 
+    function avatarDisplayName(avatar) {
+      if (avatar.avatarName && avatar.avatarName.trim().length > 0) {
+        return `${avatar.avatarName} (${avatar.avatarId})`;
+      }
+      return avatar.avatarId;
+    }
+
+    async function loadCopySourceAvatars() {
+      const previousSelection = copyFromAvatarSelect.value;
+      try {
+        const data = await api("/api/avatars/with-profiles");
+        const avatars = data.avatars || [];
+        copyFromAvatarSelect.innerHTML = "";
+
+        if (!avatars.length) {
+          const option = document.createElement("option");
+          option.value = "";
+          option.textContent = "No avatars with saved profiles";
+          copyFromAvatarSelect.appendChild(option);
+          copyFromAvatarSelect.disabled = true;
+          copyFromAvatarBtn.disabled = true;
+          return;
+        }
+
+        avatars.forEach((avatar) => {
+          const option = document.createElement("option");
+          option.value = avatar.avatarId;
+          option.textContent = avatarDisplayName(avatar);
+          copyFromAvatarSelect.appendChild(option);
+        });
+
+        const hasPreviousSelection = avatars.some((avatar) => avatar.avatarId === previousSelection);
+        copyFromAvatarSelect.value = hasPreviousSelection ? previousSelection : avatars[0].avatarId;
+        copyFromAvatarSelect.disabled = false;
+        copyFromAvatarBtn.disabled = false;
+      } catch (error) {
+        copyFromAvatarSelect.innerHTML = "";
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Unable to load avatars";
+        copyFromAvatarSelect.appendChild(option);
+        copyFromAvatarSelect.disabled = true;
+        copyFromAvatarBtn.disabled = true;
+      }
+    }
+
     function renderProfiles(profiles) {
       profilesEl.innerHTML = "";
       if (!profiles.length) {
@@ -262,6 +319,7 @@
           body: JSON.stringify(body || {})
         });
         await loadStatus();
+        await loadCopySourceAvatars();
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -274,10 +332,19 @@
     copyFromPreviousBtn.addEventListener("click", () => {
       runProfileAction("/api/profiles/copy-from-previous");
     });
+    copyFromAvatarBtn.addEventListener("click", () => {
+      const avatarId = copyFromAvatarSelect.value;
+      if (!avatarId) {
+        setStatus("Select an avatar to copy from.", true);
+        return;
+      }
+      runProfileAction("/api/profiles/copy-from-avatar", { avatarId });
+    });
     setAvatarNameBtn.addEventListener("click", () => {
       runProfileAction("/api/avatar/name", { name: avatarNameInput.value });
     });
 
+    loadCopySourceAvatars();
     loadStatus();
     setInterval(loadStatus, 2000);
   </script>

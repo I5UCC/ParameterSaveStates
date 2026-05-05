@@ -12,6 +12,7 @@ public class ProfileService
 {
     private readonly OscService _oscService;
     private const string NameFile = "Name";
+    private const string ProfilesRootFolderName = "Profiles";
     
     private List<string> AvailableProfiles { get; set; } = new List<string>();
     
@@ -31,7 +32,7 @@ public class ProfileService
     {
         AvailableProfiles.Clear();
 
-        var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{avatarId}");
+        var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
         if (!Directory.Exists(folderPath))
         {
             CurrentPage = 0;
@@ -160,7 +161,7 @@ public class ProfileService
             profileName = "Profile " + nextIndex;
         }
 
-        var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{avatarId}");
+        var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
         if (!Directory.Exists(folderPath))
         {
             Directory.CreateDirectory(folderPath);
@@ -206,8 +207,8 @@ public class ProfileService
 
     public void CopyProfilesFromAvatar(string sourceAvatarId, string targetAvatarId)
     {
-        var previousFolderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{sourceAvatarId}");
-        var currentFolderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{targetAvatarId}");
+        var previousFolderPath = Path.Combine(GetProfilesRootPath(), sourceAvatarId);
+        var currentFolderPath = Path.Combine(GetProfilesRootPath(), targetAvatarId);
 
         if (!Directory.Exists(previousFolderPath))
         {
@@ -304,7 +305,7 @@ public class ProfileService
     
     private string GetAvatarNameFilePath(string avatarId)
     {
-        var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{avatarId}");
+        var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
         return Path.Combine(folderPath, NameFile);
     }
 
@@ -320,13 +321,51 @@ public class ProfileService
 
     public void SaveAvatarName(string avatarId, string avatarName)
     {
-        var folderPath = Path.Combine(Application.persistentDataPath, $"Profiles/{avatarId}");
+        var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
         if (!Directory.Exists(folderPath))
         {
             Directory.CreateDirectory(folderPath);
         }
         var filePath = GetAvatarNameFilePath(avatarId);
         File.WriteAllText(filePath, avatarName);
+    }
+
+    public List<(string avatarId, string avatarName)> GetAvatarsWithSavedProfiles()
+    {
+        var result = new List<(string avatarId, string avatarName)>();
+        var profilesRootPath = GetProfilesRootPath();
+        if (!Directory.Exists(profilesRootPath))
+        {
+            return result;
+        }
+
+        var avatarDirectories = Directory.GetDirectories(profilesRootPath);
+        foreach (var avatarDirectory in avatarDirectories)
+        {
+            var avatarId = Path.GetFileName(avatarDirectory);
+            if (string.IsNullOrWhiteSpace(avatarId))
+            {
+                continue;
+            }
+
+            var hasProfiles = Directory.GetFiles(avatarDirectory, "*")
+                .Any(file => !string.Equals(Path.GetFileName(file), NameFile, StringComparison.Ordinal));
+            if (!hasProfiles)
+            {
+                continue;
+            }
+
+            result.Add((avatarId, LoadAvatarName(avatarId)));
+        }
+
+        return result
+            .OrderBy(entry => string.IsNullOrWhiteSpace(entry.avatarName) ? entry.avatarId : entry.avatarName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string GetProfilesRootPath()
+    {
+        return Path.Combine(Application.persistentDataPath, ProfilesRootFolderName);
     }
 
     public bool RenameProfile(string displayName, string nameOverride)
