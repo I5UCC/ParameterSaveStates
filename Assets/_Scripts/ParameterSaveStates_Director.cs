@@ -323,19 +323,51 @@ public class ParameterSaveStates_Director : MonoBehaviour
         ShowKeyboard("Enter New Profile Name", _profileToRename);
     }
 
+    public void MoveProfileUp(GameObject profile)
+    {
+        MoveProfile(profile, true);
+    }
+
+    public void MoveProfileDown(GameObject profile)
+    {
+        MoveProfile(profile, false);
+    }
+
     private void EnableEditButtons(GameObject profile, bool enable)
     {
         var editButton = profile.GetEditButton();
         var editText = editButton.GetButtonTextComponent();
         var editContainer = profile.GetEditContainer();
+        var moveButtonContainer = profile.GetMoveButtonContainer();
 
         editButton.GetImageComponent().color = enable ? new Color(0.020f, 0.765f, 0f) : new Color(0.631f, 0.380f, 0f);
         editText.text = enable ? "Done" : "Edit";
         editContainer.gameObject.SetActive(enable);
+        if (moveButtonContainer != null)
+        {
+            moveButtonContainer.gameObject.SetActive(enable);
+        }
         if (!enable)
         {
             profile.ResetEditButtons();
         }
+    }
+
+    private void MoveProfile(GameObject profile, bool moveUp)
+    {
+        if (profile == null)
+        {
+            return;
+        }
+
+        var displayName = profile.GetDisplayNameText().text;
+        if (!_profileService.MoveProfile(_currentAvatar, displayName, moveUp))
+        {
+            Debug.LogWarning("Unable to move profile.");
+            return;
+        }
+
+        RefreshProfiles();
     }
     
     public void CopyFromPreviousAvatar(Text buttontext)
@@ -471,14 +503,43 @@ public class ParameterSaveStates_Director : MonoBehaviour
         }
 
         var profiles = _profileService.GetCurrentPageProfiles();
+        var allProfileNames = _profileService.GetAllProfileDisplayNames();
         for (var i = 0; i < profiles.Count; i++)
         {
             var profile = profileContainer.transform.GetChild(i).gameObject;
             profile.SetActive(true);
             profile.GetDisplayNameText().text = profiles[i].displayName;
+            UpdateMoveButtonState(profile, profiles[i].displayName, allProfileNames);
         }
 
         UpdatePagingButtons();
+    }
+
+    private static void UpdateMoveButtonState(GameObject profile, string displayName, System.Collections.Generic.List<string> allProfileNames)
+    {
+        var moveContainer = profile.GetMoveButtonContainer();
+        if (moveContainer == null)
+        {
+            return;
+        }
+
+        var upButtonTransform = moveContainer.Find("Up");
+        var downButtonTransform = moveContainer.Find("Down");
+        if (upButtonTransform == null || downButtonTransform == null)
+        {
+            return;
+        }
+
+        var upButton = upButtonTransform.GetComponent<Button>();
+        var downButton = downButtonTransform.GetComponent<Button>();
+        if (upButton == null || downButton == null)
+        {
+            return;
+        }
+
+        var index = allProfileNames.IndexOf(displayName);
+        upButton.interactable = index > 0;
+        downButton.interactable = index >= 0 && index < allProfileNames.Count - 1;
     }
 
     private void UpdatePagingButtons()
