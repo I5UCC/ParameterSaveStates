@@ -564,6 +564,7 @@ public class TrayForm : System.Windows.Forms.Form
 
         trayIcon = new NotifyIcon();
         trayIcon.Text = "Steameeter";
+        trayIcon.MouseDoubleClick += OnTrayIconMouseDoubleClick;
 
         trayIcon.ContextMenuStrip = trayMenu;
 
@@ -635,6 +636,14 @@ public class TrayForm : System.Windows.Forms.Form
     protected void OnOpenWebUiBrowser(object sender, EventArgs e)
     {
         onOpenWebUiBrowser?.Invoke();
+    }
+
+    private void OnTrayIconMouseDoubleClick(object sender, MouseEventArgs e)
+    {
+        if (e.Button == MouseButtons.Left)
+        {
+            onOpenWebUi?.Invoke();
+        }
     }
 
     protected override void Dispose(bool disposing)
