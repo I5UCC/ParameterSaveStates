@@ -142,7 +142,7 @@
     const statusBaseClasses = "mb-4 rounded-lg border px-4 py-3 text-sm";
     const statusOkClasses = "border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-100";
     const statusErrorClasses = "border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-500/60 dark:bg-rose-950/40 dark:text-rose-100";
-    const buttonBaseClasses = "rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950";
+    const buttonBaseClasses = "rounded-lg px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-60";
     const buttonVariants = {
       primary: "bg-sky-500 text-white hover:bg-sky-400 focus:ring-sky-400",
       secondary: "bg-slate-700 text-slate-100 hover:bg-slate-600 focus:ring-slate-400",
@@ -245,7 +245,7 @@
         return;
       }
 
-      profiles.forEach((name) => {
+      profiles.forEach((name, index) => {
         const row = document.createElement("div");
         row.className = "flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/60";
 
@@ -253,6 +253,10 @@
         label.className = "flex-1 text-sm font-semibold text-slate-900 dark:text-slate-100";
         label.textContent = name;
 
+        const moveUpBtn = createButton("↑", () => runProfileAction("/api/profiles/move", { name, direction: "up" }), "secondary");
+        moveUpBtn.disabled = index === 0;
+        const moveDownBtn = createButton("↓", () => runProfileAction("/api/profiles/move", { name, direction: "down" }), "secondary");
+        moveDownBtn.disabled = index === profiles.length - 1;
         const applyBtn = createButton("Apply", () => runProfileAction("/api/profiles/apply", { name }), "primary");
         const overrideBtn = createButton("Override", () => confirmAction(
           "Override this profile with current parameters?",
@@ -270,6 +274,8 @@
         ), "danger");
 
         row.appendChild(label);
+        row.appendChild(moveUpBtn);
+        row.appendChild(moveDownBtn);
         row.appendChild(applyBtn);
         row.appendChild(overrideBtn);
         row.appendChild(renameBtn);

@@ -253,6 +253,15 @@ public sealed class WebUiService : IDisposable
                 return;
             }
 
+            if (method == "POST" && path.Equals("/api/profiles/move", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var name = body.Value<string>("name");
+                var direction = body.Value<string>("direction");
+                WriteOk(context.Response, RunOnMainThread(() => MoveProfile(name, direction)));
+                return;
+            }
+
             if (method == "GET" && path.Equals("/api/avatars/with-profiles", StringComparison.OrdinalIgnoreCase))
             {
                 WriteOk(context.Response, RunOnMainThread(ListAvatarsWithSavedProfiles));
@@ -445,6 +454,36 @@ public sealed class WebUiService : IDisposable
         if (!success)
         {
             throw new InvalidOperationException("Profile not found");
+        }
+
+        return new { profiles = GetProfileNames(currentAvatar) };
+    }
+
+    private object MoveProfile(string name, string direction)
+    {
+        var currentAvatar = _getCurrentAvatar?.Invoke();
+        if (string.IsNullOrWhiteSpace(currentAvatar))
+        {
+            throw new InvalidOperationException("No current avatar detected");
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new InvalidOperationException("Profile name is required");
+        }
+
+        var moveUp = direction switch
+        {
+            "up" => true,
+            "down" => false,
+            _ => throw new InvalidOperationException("Direction must be 'up' or 'down'")
+        };
+
+        _profileService.LoadProfiles(currentAvatar);
+        var success = _profileService.MoveProfile(currentAvatar, name, moveUp);
+        if (!success)
+        {
+            throw new InvalidOperationException("Unable to move profile");
         }
 
         return new { profiles = GetProfileNames(currentAvatar) };

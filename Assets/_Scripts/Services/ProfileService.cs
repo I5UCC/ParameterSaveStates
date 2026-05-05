@@ -41,12 +41,8 @@ public class ProfileService
             return;
         }
 
-        var files = Directory.GetFiles(folderPath, "*");
-        var sortedFiles = files
-            .Where(f => Path.GetFileName(f) != NameFile)
-            .Select(f => new { Path = f, Index = GetProfileIndex(f) })
-            .OrderBy(f => f.Index)
-            .Select(f => f.Path)
+        var sortedFiles = GetOrderedProfileEntries(folderPath)
+            .Select(entry => entry.Path)
             .ToList();
 
         AvailableProfiles.AddRange(sortedFiles);
@@ -274,22 +270,14 @@ public class ProfileService
     private static int GetProfileIndex(string filePath)
     {
         var fileName = Path.GetFileName(filePath);
-        var underscoreIndex = fileName.IndexOf('_');
-        if (underscoreIndex > 0 && int.TryParse(fileName.Substring(0, underscoreIndex), out var index))
-        {
-            return index;
-        }
-        return int.MaxValue;
+        var (_, index, _) = ParseProfileFileName(fileName);
+        return index;
     }
 
     private static string GetProfileDisplayName(string fileName)
     {
-        var underscoreIndex = fileName.IndexOf('_');
-        if (underscoreIndex > 0 && int.TryParse(fileName.Substring(0, underscoreIndex), out _))
-        {
-            return fileName.Substring(underscoreIndex + 1);
-        }
-        return fileName;
+        var (_, _, displayName) = ParseProfileFileName(fileName);
+        return displayName;
     }
 
     private int GetNextProfileIndex()
@@ -532,10 +520,13 @@ public class ProfileService
         if (profilePath == null || !File.Exists(profilePath))
             return false;
 
-        var index = GetProfileIndex(profilePath);
+        var currentFileName = Path.GetFileName(profilePath);
+        var (hasIndex, index, _) = ParseProfileFileName(currentFileName);
         var directory = Path.GetDirectoryName(profilePath);
-        var newFileName = $"{index}_{nameOverride}";
+        var newFileName = hasIndex ? $"{index}_{nameOverride}" : nameOverride;
         var newPath = Path.Combine(directory, newFileName);
+        if (File.Exists(newPath))
+            return false;
 
         File.Move(profilePath, newPath);
         return true;
@@ -544,5 +535,106 @@ public class ProfileService
     public bool OverrideProfile(string avatarId, string displayName)
     {
         return SaveProfile(avatarId, displayName);
+    }
+
+    public bool MoveProfile(string avatarId, string displayName, bool moveUp)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId) || string.IsNullOrWhiteSpace(displayName))
+        {
+            return false;
+        }
+
+        var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
+        if (!Directory.Exists(folderPath))
+        {
+            return false;
+        }
+
+        var orderedProfiles = GetOrderedProfileEntries(folderPath);
+        var currentIndex = orderedProfiles.FindIndex(profile =>
+            string.Equals(profile.DisplayName, displayName, StringComparison.Ordinal));
+        if (currentIndex < 0)
+        {
+            return false;
+        }
+
+        var targetIndex = moveUp ? currentIndex - 1 : currentIndex + 1;
+        if (targetIndex < 0 || targetIndex >= orderedProfiles.Count)
+        {
+            return false;
+        }
+
+        (orderedProfiles[currentIndex], orderedProfiles[targetIndex]) =
+            (orderedProfiles[targetIndex], orderedProfiles[currentIndex]);
+
+        ReindexProfiles(folderPath, orderedProfiles);
+        return true;
+    }
+
+    private sealed class ProfileFileEntry
+    {
+        public string Path;
+        public string DisplayName;
+        public bool HasIndex;
+        public int Index;
+        public string FileName;
+    }
+
+    private static List<ProfileFileEntry> GetOrderedProfileEntries(string folderPath)
+    {
+        return Directory.GetFiles(folderPath, "*")
+            .Where(path => !string.Equals(Path.GetFileName(path), NameFile, StringComparison.Ordinal))
+            .Select(path =>
+            {
+                var fileName = Path.GetFileName(path);
+                var (hasIndex, index, displayName) = ParseProfileFileName(fileName);
+                return new ProfileFileEntry
+                {
+                    Path = path,
+                    DisplayName = displayName,
+                    HasIndex = hasIndex,
+                    Index = index,
+                    FileName = fileName
+                };
+            })
+            .OrderBy(entry => entry.HasIndex ? 0 : 1)
+            .ThenBy(entry => entry.Index)
+            .ThenBy(entry => entry.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(entry => entry.FileName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static void ReindexProfiles(string folderPath, List<ProfileFileEntry> orderedProfiles)
+    {
+        var tempMoves = new List<(string tempPath, string targetPath)>(orderedProfiles.Count);
+        for (var i = 0; i < orderedProfiles.Count; i++)
+        {
+            var tempPath = Path.Combine(folderPath, $"__reorder_tmp_{Guid.NewGuid():N}");
+            File.Move(orderedProfiles[i].Path, tempPath);
+            var targetFileName = $"{i + 1}_{orderedProfiles[i].DisplayName}";
+            var targetPath = Path.Combine(folderPath, targetFileName);
+            tempMoves.Add((tempPath, targetPath));
+        }
+
+        foreach (var (tempPath, targetPath) in tempMoves)
+        {
+            File.Move(tempPath, targetPath);
+        }
+    }
+
+    private static (bool hasIndex, int index, string displayName) ParseProfileFileName(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+        {
+            return (false, int.MaxValue, fileName ?? string.Empty);
+        }
+
+        var underscoreIndex = fileName.IndexOf('_');
+        if (underscoreIndex > 0 && int.TryParse(fileName.Substring(0, underscoreIndex), out var index))
+        {
+            return (true, index, fileName.Substring(underscoreIndex + 1));
+        }
+
+        return (false, int.MaxValue, fileName);
     }
 }
