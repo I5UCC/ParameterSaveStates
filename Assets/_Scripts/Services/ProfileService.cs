@@ -503,6 +503,23 @@ public class ProfileService
             .ToList();
     }
 
+    public bool DeleteAvatarProfiles(string avatarId)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId))
+        {
+            return false;
+        }
+
+        var avatarFolderPath = Path.Combine(GetProfilesRootPath(), avatarId);
+        if (!Directory.Exists(avatarFolderPath))
+        {
+            return false;
+        }
+
+        Directory.Delete(avatarFolderPath, true);
+        return true;
+    }
+
     private static string GetProfilesRootPath()
     {
         return Path.Combine(Application.persistentDataPath, ProfilesRootFolderName);

@@ -253,12 +253,6 @@ public sealed class WebUiService : IDisposable
                 return;
             }
 
-            if (method == "POST" && path.Equals("/api/profiles/copy-from-previous", StringComparison.OrdinalIgnoreCase))
-            {
-                WriteOk(context.Response, RunOnMainThread(CopyFromPrevious));
-                return;
-            }
-
             if (method == "GET" && path.Equals("/api/avatars/with-profiles", StringComparison.OrdinalIgnoreCase))
             {
                 WriteOk(context.Response, RunOnMainThread(ListAvatarsWithSavedProfiles));
@@ -270,6 +264,14 @@ public sealed class WebUiService : IDisposable
                 var body = ReadJsonBody(request);
                 var avatarId = body.Value<string>("avatarId");
                 WriteOk(context.Response, RunOnMainThread(() => CopyFromAvatar(avatarId)));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/profiles/delete-avatar-folder", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var avatarId = body.Value<string>("avatarId");
+                WriteOk(context.Response, RunOnMainThread(() => DeleteAvatarFolder(avatarId)));
                 return;
             }
 
@@ -448,24 +450,6 @@ public sealed class WebUiService : IDisposable
         return new { profiles = GetProfileNames(currentAvatar) };
     }
 
-    private object CopyFromPrevious()
-    {
-        var currentAvatar = _getCurrentAvatar?.Invoke();
-        var previousAvatar = _getPreviousAvatar?.Invoke();
-        if (string.IsNullOrWhiteSpace(currentAvatar))
-        {
-            throw new InvalidOperationException("No current avatar detected");
-        }
-
-        if (string.IsNullOrWhiteSpace(previousAvatar))
-        {
-            throw new InvalidOperationException("No previous avatar detected");
-        }
-
-        _profileService.CopyProfilesFromAvatar(previousAvatar, currentAvatar);
-        return new { profiles = GetProfileNames(currentAvatar) };
-    }
-
     private object ListAvatarsWithSavedProfiles()
     {
         var avatars = _profileService.GetAvatarsWithSavedProfiles();
@@ -501,6 +485,33 @@ public sealed class WebUiService : IDisposable
 
         _profileService.CopyProfilesFromAvatar(sourceAvatarId, currentAvatar);
         return new { profiles = GetProfileNames(currentAvatar) };
+    }
+
+    private object DeleteAvatarFolder(string avatarId)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId))
+        {
+            throw new InvalidOperationException("Avatar is required");
+        }
+
+        var avatarsWithProfiles = _profileService.GetAvatarsWithSavedProfiles();
+        var hasProfiles = avatarsWithProfiles.Exists(avatar => avatar.avatarId == avatarId);
+        if (!hasProfiles)
+        {
+            throw new InvalidOperationException("Selected avatar has no saved profiles");
+        }
+
+        var success = _profileService.DeleteAvatarProfiles(avatarId);
+        if (!success)
+        {
+            throw new InvalidOperationException("Avatar profiles folder not found");
+        }
+
+        var currentAvatar = _getCurrentAvatar?.Invoke();
+        return new
+        {
+            profiles = string.IsNullOrWhiteSpace(currentAvatar) ? new List<string>() : GetProfileNames(currentAvatar)
+        };
     }
 
     private string LoadTheme()
