@@ -90,6 +90,9 @@ public class ParameterSaveStates_Director : MonoBehaviour
         copyFromPreviousButton.gameObject.SetActive(false);
         setNameButton.gameObject.SetActive(false);
 
+        if (menuOverlay != null && menuOverlay.cameraForTexture != null)
+            menuOverlay.cameraForTexture.enabled = false;
+
         _oscService.OnVRChatConnected += OnVRChatConnected;
         _oscService.OnAvatarChanged += OnAvatarChanged;
         _oscService.Initialize();
@@ -149,6 +152,9 @@ public class ParameterSaveStates_Director : MonoBehaviour
     public void OnSteamVRDisconnect()
     {
         Debug.Log("SteamVR disconnected");
+        if (menuOverlay != null && menuOverlay.cameraForTexture != null)
+            menuOverlay.cameraForTexture.enabled = false;
+
         if (enableWebUi && _webUiService != null && _webUiService.IsRunning)
         {
             OpenWebUi();
