@@ -367,7 +367,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
             return;
         }
 
-        RefreshProfiles();
+        RefreshProfiles(displayName);
     }
     
     public void CopyFromPreviousAvatar(Text buttontext)
@@ -483,7 +483,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         if (!active) DisplayCurrentPage();
     }
 
-    private void RefreshProfiles()
+    private void RefreshProfiles(string profileToKeepEditing = null)
     {
         profileContainer.SetActive(true);
         foreach (Transform child in profileContainer.transform)
@@ -492,10 +492,10 @@ public class ParameterSaveStates_Director : MonoBehaviour
         }
 
         _profileService.LoadProfiles(_currentAvatar);
-        DisplayCurrentPage();
+        DisplayCurrentPage(profileToKeepEditing);
     }
 
-    private void DisplayCurrentPage()
+    private void DisplayCurrentPage(string profileToKeepEditing = null)
     {
         foreach (Transform child in profileContainer.transform)
         {
@@ -510,6 +510,16 @@ public class ParameterSaveStates_Director : MonoBehaviour
             profile.SetActive(true);
             profile.GetDisplayNameText().text = profiles[i].displayName;
             UpdateMoveButtonState(profile, profiles[i].displayName, allProfileNames);
+
+            if (!string.IsNullOrWhiteSpace(profileToKeepEditing) &&
+                string.Equals(profiles[i].displayName, profileToKeepEditing, StringComparison.Ordinal))
+            {
+                EnableEditButtons(profile, true);
+            }
+            else
+            {
+                EnableEditButtons(profile, false);
+            }
         }
 
         UpdatePagingButtons();
