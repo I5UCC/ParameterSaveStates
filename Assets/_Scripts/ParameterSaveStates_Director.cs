@@ -11,8 +11,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
     {
         None,
         NewProfile,
-        RenameProfile,
-        SetAvatarName
+        RenameProfile
     }
     
     #region Unity Inspector Fields
@@ -42,7 +41,11 @@ public class ParameterSaveStates_Director : MonoBehaviour
     public Text pageNumberText;
     
     [Space(10)] 
-    public Button setNameButton;
+
+    [Header("Web UI")]
+    [SerializeField] private bool enableWebUi = true;
+    [SerializeField] private int webUiPort = 17663;
+    [SerializeField] private WindowController windowController;
     
     #endregion
 
@@ -62,6 +65,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     private OscService _oscService;
     private ProfileService _profileService;
+    private ProfileService _webProfileService;
+    private WebUiService _webUiService;
 
     #endregion
 
@@ -81,11 +86,41 @@ public class ParameterSaveStates_Director : MonoBehaviour
         cancelButton.gameObject.SetActive(false);
         newButton.gameObject.SetActive(false);
         copyFromPreviousButton.gameObject.SetActive(false);
-        setNameButton.gameObject.SetActive(false);
+
+        if (menuOverlay != null && menuOverlay.cameraForTexture != null)
+            menuOverlay.cameraForTexture.enabled = false;
 
         _oscService.OnVRChatConnected += OnVRChatConnected;
         _oscService.OnAvatarChanged += OnAvatarChanged;
         _oscService.Initialize();
+
+        if (enableWebUi)
+        {
+            if (webUiPort <= 0)
+            {
+                Debug.LogWarning("Web UI port is invalid. Web UI will not start.");
+            }
+            else
+            {
+                var indexPath = Path.Combine(Application.streamingAssetsPath, "WebUi", "index.html");
+                _webProfileService = new ProfileService(_oscService, profileContainer.transform.childCount);
+                _webUiService = new WebUiService(
+                    _webProfileService,
+                    _oscService,
+                    _mainThreadDispatcher,
+                    () => _currentAvatar,
+                    () => _previousAvatar,
+                    webUiPort,
+                    indexPath);
+                _webUiService.Start();
+                ConfigureTrayMenu();
+
+                if (!IsSteamVrRunning())
+                {
+                    OpenWebUi();
+                }
+            }
+        }
 
         if (menuOverlay != null && menuOverlay.overlay != null)
         {
@@ -96,6 +131,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
     
     public void OnApplicationQuit()
     {
+        _webUiService?.Dispose();
         _oscService?.Dispose();
     }
 
@@ -112,7 +148,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     public void OnSteamVRDisconnect()
     {
-        Debug.Log("Quitting!");
+        Debug.Log("SteamVR disconnected");
         Application.Quit();
     }
 
@@ -128,7 +164,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
         cancelButton.gameObject.SetActive(false);
         newButton.gameObject.SetActive(true);
         copyFromPreviousButton.gameObject.SetActive(true);
-        setNameButton.gameObject.SetActive(true);
         copyFromPreviousButton.gameObject.GetDisplayNameText().text = "Copy From Last";
         RefreshProfiles();
     }
@@ -143,6 +178,65 @@ public class ParameterSaveStates_Director : MonoBehaviour
     }
 
     #endregion
+
+    private void ConfigureTrayMenu()
+    {
+        if (windowController == null)
+        {
+            windowController = FindAnyObjectByType<WindowController>();
+        }
+
+        if (windowController != null)
+        {
+            windowController.SetOpenWebUiAction(OpenWebUi);
+            windowController.SetOpenWebUiBrowserAction(OpenWebUiBrowser);
+        }
+    }
+
+    private void OpenWebUiBrowser()
+    {
+        if (!enableWebUi || _webUiService == null || !_webUiService.IsRunning)
+            return;
+
+        Application.OpenURL(_webUiService.BaseUrl);
+    }
+
+    private void OpenWebUi()
+    {
+        if (!enableWebUi || _webUiService == null || !_webUiService.IsRunning)
+            return;
+
+        void Open()
+        {
+            if (windowController != null
+                && windowController.TryShowWebUiWindow(_webUiService.BaseUrl))
+            {
+                return;
+            }
+
+            OpenWebUiBrowser();
+        }
+
+        if (_mainThreadDispatcher != null)
+        {
+            _mainThreadDispatcher.Enqueue(Open);
+        }
+        else
+        {
+            Open();
+        }
+    }
+
+    private static bool IsSteamVrRunning()
+    {
+#if UNITY_STANDALONE_WIN
+        return System.Diagnostics.Process.GetProcessesByName("vrserver").Length > 0
+               || System.Diagnostics.Process.GetProcessesByName("vrmonitor").Length > 0
+               || System.Diagnostics.Process.GetProcessesByName("steamvr").Length > 0;
+#else
+        return true;
+#endif
+    }
 
     #region Button Handlers
     
@@ -221,19 +315,51 @@ public class ParameterSaveStates_Director : MonoBehaviour
         ShowKeyboard("Enter New Profile Name", _profileToRename);
     }
 
+    public void MoveProfileUp(GameObject profile)
+    {
+        MoveProfile(profile, true);
+    }
+
+    public void MoveProfileDown(GameObject profile)
+    {
+        MoveProfile(profile, false);
+    }
+
     private void EnableEditButtons(GameObject profile, bool enable)
     {
         var editButton = profile.GetEditButton();
         var editText = editButton.GetButtonTextComponent();
         var editContainer = profile.GetEditContainer();
+        var moveButtonContainer = profile.GetMoveButtonContainer();
 
         editButton.GetImageComponent().color = enable ? new Color(0.020f, 0.765f, 0f) : new Color(0.631f, 0.380f, 0f);
         editText.text = enable ? "Done" : "Edit";
         editContainer.gameObject.SetActive(enable);
+        if (moveButtonContainer != null)
+        {
+            moveButtonContainer.gameObject.SetActive(enable);
+        }
         if (!enable)
         {
             profile.ResetEditButtons();
         }
+    }
+
+    private void MoveProfile(GameObject profile, bool moveUp)
+    {
+        if (profile == null)
+        {
+            return;
+        }
+
+        var displayName = profile.GetDisplayNameText().text;
+        if (!_profileService.MoveProfile(_currentAvatar, displayName, moveUp))
+        {
+            Debug.LogWarning("Unable to move profile.");
+            return;
+        }
+
+        RefreshProfiles(displayName);
     }
     
     public void CopyFromPreviousAvatar(Text buttontext)
@@ -273,13 +399,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
         newButton.gameObject.SetActive(false);
         copyFromPreviousButton.gameObject.SetActive(false);
         pagingContainer.SetActive(false);
-    }
-
-    public void SetAvatarName()
-    {
-        _keyboardMode = KeyboardMode.SetAvatarName;
-        var currentName = _profileService.LoadAvatarName(_currentAvatar) ?? "";
-        ShowKeyboard("Enter Avatar Name", currentName);
     }
 
     private void SaveProfile()
@@ -339,8 +458,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
     {
         var customName = _profileService.LoadAvatarName(_currentAvatar);
         currentAvatarText.text = !string.IsNullOrWhiteSpace(customName) 
-            ? $"Current Avatar: {customName}" 
-            : $"Current Avatar: {_currentAvatar}";
+            ? customName
+            : _currentAvatar;
     }
 
     private void SetStatusText(string text = "")
@@ -349,7 +468,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
         statusText.text = text;
         statusText.gameObject.SetActive(active);
         profileContainer.SetActive(!active);
-        setNameButton.gameObject.SetActive(!active);
         currentAvatarText.gameObject.SetActive(true);
         cancelButton.gameObject.SetActive(active);
         newButton.gameObject.SetActive(!active);
@@ -357,7 +475,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         if (!active) DisplayCurrentPage();
     }
 
-    private void RefreshProfiles()
+    private void RefreshProfiles(string profileToKeepEditing = null)
     {
         profileContainer.SetActive(true);
         foreach (Transform child in profileContainer.transform)
@@ -366,10 +484,10 @@ public class ParameterSaveStates_Director : MonoBehaviour
         }
 
         _profileService.LoadProfiles(_currentAvatar);
-        DisplayCurrentPage();
+        DisplayCurrentPage(profileToKeepEditing);
     }
 
-    private void DisplayCurrentPage()
+    private void DisplayCurrentPage(string profileToKeepEditing = null)
     {
         foreach (Transform child in profileContainer.transform)
         {
@@ -377,14 +495,53 @@ public class ParameterSaveStates_Director : MonoBehaviour
         }
 
         var profiles = _profileService.GetCurrentPageProfiles();
+        var allProfileNames = _profileService.GetAllProfileDisplayNames();
         for (var i = 0; i < profiles.Count; i++)
         {
             var profile = profileContainer.transform.GetChild(i).gameObject;
             profile.SetActive(true);
             profile.GetDisplayNameText().text = profiles[i].displayName;
+            UpdateMoveButtonState(profile, profiles[i].displayName, allProfileNames);
+
+            if (!string.IsNullOrWhiteSpace(profileToKeepEditing) &&
+                string.Equals(profiles[i].displayName, profileToKeepEditing, StringComparison.Ordinal))
+            {
+                EnableEditButtons(profile, true);
+            }
+            else
+            {
+                EnableEditButtons(profile, false);
+            }
         }
 
         UpdatePagingButtons();
+    }
+
+    private static void UpdateMoveButtonState(GameObject profile, string displayName, System.Collections.Generic.List<string> allProfileNames)
+    {
+        var moveContainer = profile.GetMoveButtonContainer();
+        if (moveContainer == null)
+        {
+            return;
+        }
+
+        var upButtonTransform = moveContainer.Find("Up");
+        var downButtonTransform = moveContainer.Find("Down");
+        if (upButtonTransform == null || downButtonTransform == null)
+        {
+            return;
+        }
+
+        var upButton = upButtonTransform.GetComponent<Button>();
+        var downButton = downButtonTransform.GetComponent<Button>();
+        if (upButton == null || downButton == null)
+        {
+            return;
+        }
+
+        var index = allProfileNames.IndexOf(displayName);
+        upButton.interactable = index > 0;
+        downButton.interactable = index >= 0 && index < allProfileNames.Count - 1;
     }
 
     private void UpdatePagingButtons()
@@ -414,15 +571,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
         switch (_keyboardMode)
         {
-            case KeyboardMode.SetAvatarName:
-                if (!string.IsNullOrWhiteSpace(_profileText))
-                {
-                    _profileService.SaveAvatarName(_currentAvatar, _profileText);
-                    UpdateCurrentAvatarDisplay();
-                }
-                _profileText = string.Empty;
-                SetStatusText();
-                break;
             case KeyboardMode.NewProfile:
                 SetStatusText("Saving Profile...");
                 SaveProfile();

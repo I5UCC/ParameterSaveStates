@@ -13,6 +13,8 @@ You can set up e. g. two different outfits and save them as a profile and later 
   - Find the blue icon that looks like a floppy disk in the SteamVR dashboard.
 - Autostart with SteamVR
   - You can start ParameterSaveStates in the same way you autostart e.g. OVRAS or XSO by going to SteamVR Settings > Startup/Shutdown > Choose Startup Overlay Apps > Turn ParameterSaveStates to ON
+- Local web UI for browser control
+  - Open http://127.0.0.1:17663 while the app is running
 - Save basically infinite profiles ***per avatar*** with custom naming
   - Setup the avatar the way you want to save it
   - hit `+ New`
@@ -22,6 +24,16 @@ You can set up e. g. two different outfits and save them as a profile and later 
   - Just hit Apply on any of the Profiles you have saved
 - Copy profile sets between avatars, if e.g. You have the same avatar with other clothing choices or just more optimized versions.
   - Switch into the avatar you want to copy from first, then switch into the avatar you want to copy to, then press the "Copy from Last" button.
+
+## Web UI
+When the app is running, a local web interface is available at:
+
+http://127.0.0.1:17663
+
+This UI mirrors the dashboard features: save/apply/override/rename/delete profiles, automatically shows avatar names when available from VRChat OSC metadata, copy from selected avatars, and delete selected avatar profile folders.
+
+If SteamVR is not running, the app opens the web UI automatically. You can also open it from the tray menu.
+You can choose whether this opens in your default browser or in a dedicated app window via the `Open Web UI` button in the tray menu.
 
 ## Preview
 

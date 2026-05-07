@@ -3,7 +3,12 @@ using UnityEngine.UI;
 
 public static class ProfileObjectExtensions
 {
-    private const int EDIT_CONTAINER_INDEX = 3;
+    private const string EditContainerName = "Edit_Container";
+    private const string MoveButtonContainerName = "Move_Button_Container";
+    private const string EditButtonName = "Edit";
+
+    private const int EDIT_CONTAINER_FALLBACK_INDEX = 3;
+    private const int EDIT_BUTTON_FALLBACK_INDEX = 2;
     
     private const int CONTAINER_DELETE_TEXT_INDEX = 0;
     private const int CONTAINER_OVERRIDE_TEXT_INDEX = 1;
@@ -14,7 +19,12 @@ public static class ProfileObjectExtensions
 
     public static Transform GetEditContainer(this GameObject gameObject)
     {
-        return gameObject.transform.GetChild(EDIT_CONTAINER_INDEX);
+        return GetNamedChildOrFallback(gameObject.transform, EditContainerName, EDIT_CONTAINER_FALLBACK_INDEX);
+    }
+
+    public static Transform GetMoveButtonContainer(this GameObject gameObject)
+    {
+        return gameObject.transform.Find(MoveButtonContainerName);
     }
     
     public static Text GetDeleteText(this GameObject gameObject)
@@ -48,7 +58,7 @@ public static class ProfileObjectExtensions
 
     public static Transform GetEditButton(this GameObject gameObject)
     {
-        return gameObject.transform.GetChild(2);
+        return GetNamedChildOrFallback(gameObject.transform, EditButtonName, EDIT_BUTTON_FALLBACK_INDEX);
     }
 
     public static Text GetEditButtonText(this GameObject gameObject)
@@ -76,5 +86,21 @@ public static class ProfileObjectExtensions
         
         var renameButtonText = gameObject.GetRenameText();
         renameButtonText.text = "Rename";
+    }
+
+    private static Transform GetNamedChildOrFallback(Transform parent, string childName, int fallbackIndex = -1)
+    {
+        var namedChild = parent.Find(childName);
+        if (namedChild != null)
+        {
+            return namedChild;
+        }
+
+        if (fallbackIndex >= 0 && fallbackIndex < parent.childCount)
+        {
+            return parent.GetChild(fallbackIndex);
+        }
+
+        throw new MissingReferenceException($"Unable to find child '{childName}' under '{parent.name}'.");
     }
 }

@@ -7,7 +7,7 @@ using Valve.VR;
 
 public class Unity_SteamVR_Handler : MonoBehaviour 
 {
-	public float steamVRPollTime = 0.05f;
+	public float steamVRDisconnectedPollTime = 5f;
 
 	public bool connectedToSteam = false;
 
@@ -20,10 +20,18 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 	[Space(10)]
 
 	public bool autoUpdate = true;
+	public bool forceDisableVSync = true;
 
 	[Space(10)]
 
 	public bool debugLog = false;
+
+	[Space(10)]
+	[Header("Performance")]
+	[Space(10)]
+	public int activeTargetFrameRate = 30;
+	public int idleTargetFrameRate = 1;
+	public bool throttleWhenDashboardClosed = true;
 
 	[Space(10)]
 
@@ -43,15 +51,16 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 	[HideInInspector] public OVR_Overlay_Handler overlayHandler { get { return ovrHandler.overlayHandler; } }
 	[HideInInspector] public OVR_Pose_Handler poseHandler { get { return ovrHandler.poseHandler; } }
 
-	private float lastSteamVRPollTime = 0f;
+	private float nextDisconnectedProbeTime = 0f;
+	private bool isDashboardOpen = true;
 
 	void Start()
 	{
-		// Will always do a check on start first, then use timer for polling
-		lastSteamVRPollTime = steamVRPollTime + 1f;
 		ovrHandler.onOpenVRChange += OnOpenVRChange;
+		if(forceDisableVSync && QualitySettings.vSyncCount != 0)
+			QualitySettings.vSyncCount = 0;
 
-		Application.targetFrameRate = 91;
+		UpdateTargetFrameRate();
 
 		ovrHandler.onVREvent += VREventHandler;
 	}
@@ -59,6 +68,9 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 	void OnOpenVRChange(bool connected) 
 	{
 		connectedToSteam = connected;
+		if(!connected)
+			nextDisconnectedProbeTime = 0f;
+		UpdateTargetFrameRate();
 
 		if(!connected)
 		{
@@ -70,6 +82,8 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 
 	void OnDashboardChange(bool open)
 	{
+		isDashboardOpen = open;
+		UpdateTargetFrameRate();
 		if(open)
 			onDashboardOpen.Invoke();
 		else
@@ -83,8 +97,18 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 
 	void Update() 
 	{
-		if(autoUpdate)
-			UpdateHandler();
+		if(!autoUpdate)
+			return;
+
+		if(!connectedToSteam)
+		{
+			if(Time.unscaledTime < nextDisconnectedProbeTime)
+				return;
+
+			nextDisconnectedProbeTime = Time.unscaledTime + Mathf.Max(0.1f, steamVRDisconnectedPollTime);
+		}
+
+		UpdateHandler();
 	}
 
 	public void UpdateHandler()
@@ -122,45 +146,60 @@ public class Unity_SteamVR_Handler : MonoBehaviour
 
 	bool SteamVRStartup()
 	{
-		lastSteamVRPollTime += Time.deltaTime;
-
 		if(ovrHandler.OpenVRConnected)
 			return true;
-		else if(lastSteamVRPollTime >= steamVRPollTime)
-		{
-			lastSteamVRPollTime = 0f;
 
+		if (debugLog)
 			Debug.Log("Checking to see if SteamVR Is Running...");
-			if(System.Diagnostics.Process.GetProcessesByName("vrserver").Length <= 0)
-			{
+		if(System.Diagnostics.Process.GetProcessesByName("vrserver").Length <= 0)
+		{
+			if (debugLog)
 				Debug.Log("VRServer not Running!");
-				return false;
-			}
+			return false;
+		}
 
+		if (debugLog)
 			Debug.Log("Starting Up SteamVR Connection...");
 
-			if( !ovrHandler.StartupOpenVR() )
-			{
+		if( !ovrHandler.StartupOpenVR() )
+		{
+			if (debugLog)
 				Debug.Log("Connection Failed :( !");
-				return false;
-			}
-			else
-			{
-				Debug.Log("Connected to SteamVR!");
-				
-				onSteamVRConnect.Invoke();
-				ovrHandler.onDashboardChange += OnDashboardChange;
-				ovrHandler.onKeyboardInput += OnKeyboardInput;
-
-				return true;
-			}		
-		}
-		else
 			return false;
+		}
+
+		if (debugLog)
+			Debug.Log("Connected to SteamVR!");
+		
+		onSteamVRConnect.Invoke();
+		ovrHandler.onDashboardChange += OnDashboardChange;
+		ovrHandler.onKeyboardInput += OnKeyboardInput;
+
+		return true;
 	}
 	void OnApplicationQuit()
 	{
 		if(ovrHandler.OpenVRConnected)
 			ovrHandler.ShutDownOpenVR();
+	}
+
+	void UpdateTargetFrameRate()
+	{
+		if(forceDisableVSync && QualitySettings.vSyncCount != 0)
+			QualitySettings.vSyncCount = 0;
+
+		if(!connectedToSteam)
+		{
+			Application.targetFrameRate = idleTargetFrameRate;
+			return;
+		}
+
+		if(!throttleWhenDashboardClosed)
+		{
+			Application.targetFrameRate = activeTargetFrameRate;
+			return;
+		}
+
+		Application.targetFrameRate = isDashboardOpen ? activeTargetFrameRate : idleTargetFrameRate;
 	}
 }
