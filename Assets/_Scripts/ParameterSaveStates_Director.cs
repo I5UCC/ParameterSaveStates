@@ -149,14 +149,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
     public void OnSteamVRDisconnect()
     {
         Debug.Log("SteamVR disconnected");
-        if (menuOverlay != null && menuOverlay.cameraForTexture != null)
-            menuOverlay.cameraForTexture.enabled = false;
-
-        if (enableWebUi && _webUiService != null && _webUiService.IsRunning)
-        {
-            OpenWebUi();
-            return;
-        }
         Application.Quit();
     }
 
