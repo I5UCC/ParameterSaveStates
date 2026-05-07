@@ -41,4 +41,4 @@ You can choose whether this opens in your default browser or in a dedicated app 
 
 <img width="813" height="737" alt="image" src="https://github.com/user-attachments/assets/9c716f64-686e-4b95-8e67-f7c47b413df3" />
 
-<img width="1185" height="774" alt="image" src="https://github.com/user-attachments/assets/22951e48-3d58-44f1-b3fa-b6310c4a86bd" />
+<img width="1185" height="774" alt="588948837-22951e48-3d58-44f1-b3fa-b6310c4a86bd" src="https://github.com/user-attachments/assets/db1b57c8-71fa-425f-86e4-0cda14195bb1" />
