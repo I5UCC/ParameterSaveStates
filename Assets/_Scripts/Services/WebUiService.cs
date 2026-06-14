@@ -40,6 +40,13 @@ public sealed class WebUiService : IDisposable
     public string BaseUrl => $"http://127.0.0.1:{_port}/";
     public bool IsRunning => _started;
 
+    public event Action OnStateChanged;
+
+    public void NotifyStateChanged()
+    {
+        OnStateChanged?.Invoke();
+    }
+
     public WebUiService(
         ProfileService profileService,
         OscService oscService,
@@ -126,7 +133,7 @@ public sealed class WebUiService : IDisposable
                 break;
             }
 
-            HandleContext(context);
+            ThreadPool.QueueUserWorkItem(_ => HandleContext(context));
         }
     }
 
@@ -140,6 +147,12 @@ public sealed class WebUiService : IDisposable
             if (path == "/" || path.Equals("/index.html", StringComparison.OrdinalIgnoreCase))
             {
                 ServeIndex(context.Response);
+                return;
+            }
+
+            if (path.Equals("/api/events", StringComparison.OrdinalIgnoreCase))
+            {
+                HandleEvents(context);
                 return;
             }
 
@@ -190,6 +203,48 @@ public sealed class WebUiService : IDisposable
         }
 
         WriteBytes(response, bytes, "text/html; charset=utf-8", 200);
+    }
+
+    private void HandleEvents(HttpListenerContext context)
+    {
+        context.Response.ContentType = "text/event-stream";
+        context.Response.Headers.Add("Cache-Control", "no-cache");
+        context.Response.Headers.Add("Connection", "keep-alive");
+
+        Action handler = null;
+        try
+        {
+            using var writer = new StreamWriter(context.Response.OutputStream, new UTF8Encoding(false)) { AutoFlush = true };
+            writer.Write(":\n\n");
+
+            var mre = new ManualResetEventSlim(false);
+            handler = () => mre.Set();
+            OnStateChanged += handler;
+
+            while (!_cts.IsCancellationRequested)
+            {
+                if (mre.Wait(15000, _cts.Token))
+                {
+                    writer.Write("data: update\n\n");
+                    mre.Reset();
+                }
+                else
+                {
+                    writer.Write(":\n\n");
+                }
+            }
+        }
+        catch
+        {
+            // Client disconnected or server stopping
+        }
+        finally
+        {
+            if (handler != null)
+            {
+                OnStateChanged -= handler;
+            }
+        }
     }
 
     private void HandleApi(HttpListenerContext context)
