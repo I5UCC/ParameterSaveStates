@@ -447,6 +447,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
             SetStatusText();
             UpdateCurrentAvatarDisplay();
             RefreshProfiles();
+            _webUiService?.NotifyStateChanged();
         });
     }
 

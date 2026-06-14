@@ -159,7 +159,8 @@
     }
 
     async function api(path, options) {
-      const response = await fetch(path, options);
+      const finalOptions = Object.assign({ cache: "no-store" }, options || {});
+      const response = await fetch(path, finalOptions);
       const payload = await response.json();
       if (!payload.ok) {
         throw new Error(payload.error || "Request failed");
@@ -177,7 +178,15 @@
       return id;
     }
 
+    let statusPollTimer = null;
+
+    let eventSource = null;
+
     async function loadStatus() {
+      if (statusPollTimer) {
+        clearTimeout(statusPollTimer);
+        statusPollTimer = null;
+      }
       try {
         const data = await api("/api/status");
         currentAvatarEl.textContent = formatAvatarDisplay(data.currentAvatar, data.avatarName);
@@ -185,8 +194,31 @@
         connectionStateEl.textContent = data.connected ? "Connected" : "Waiting for VRChat";
         renderProfiles(data.profiles || []);
         setStatus(data.connected ? "Ready" : "Waiting for VRChat to connect...", false);
+        
+        if (!data.connected || !data.currentAvatar) {
+          statusPollTimer = setTimeout(loadStatus, 2000);
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+        } else if (!eventSource) {
+          eventSource = new EventSource("/api/events");
+          eventSource.onmessage = () => {
+            loadStatus();
+          };
+          eventSource.onerror = () => {
+            eventSource.close();
+            eventSource = null;
+            statusPollTimer = setTimeout(loadStatus, 2000);
+          };
+        }
       } catch (error) {
         setStatus(error.message, true);
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+        statusPollTimer = setTimeout(loadStatus, 2000);
       }
     }
 
@@ -257,24 +289,24 @@
         label.className = "flex-1 text-sm font-semibold text-slate-900 dark:text-slate-100";
         label.textContent = name;
 
-        const moveUpBtn = createButton("↑", () => runProfileAction("/api/profiles/move", { name, direction: "up" }), "secondary");
+        const moveUpBtn = createButton("↑", (e, btn) => runProfileAction("/api/profiles/move", { name, direction: "up" }, btn), "secondary");
         moveUpBtn.disabled = index === 0;
-        const moveDownBtn = createButton("↓", () => runProfileAction("/api/profiles/move", { name, direction: "down" }), "secondary");
+        const moveDownBtn = createButton("↓", (e, btn) => runProfileAction("/api/profiles/move", { name, direction: "down" }, btn), "secondary");
         moveDownBtn.disabled = index === profiles.length - 1;
-        const applyBtn = createButton("Apply", () => runProfileAction("/api/profiles/apply", { name }), "primary");
-        const overrideBtn = createButton("Override", () => confirmAction(
+        const applyBtn = createButton("Apply", (e, btn) => runProfileAction("/api/profiles/apply", { name }, btn), "primary");
+        const overrideBtn = createButton("Override", (e, btn) => confirmAction(
           "Override this profile with current parameters?",
-          () => runProfileAction("/api/profiles/override", { name })
+          () => runProfileAction("/api/profiles/override", { name }, btn)
         ), "secondary");
-        const renameBtn = createButton("Rename", () => {
+        const renameBtn = createButton("Rename", (e, btn) => {
           const newName = prompt("Enter new profile name:", name);
           if (newName && newName.trim()) {
-            runProfileAction("/api/profiles/rename", { name, newName: newName.trim() });
+            runProfileAction("/api/profiles/rename", { name, newName: newName.trim() }, btn);
           }
         }, "secondary");
-        const deleteBtn = createButton("Delete", () => confirmAction(
+        const deleteBtn = createButton("Delete", (e, btn) => confirmAction(
           "Delete this profile?",
-          () => runProfileAction("/api/profiles/delete", { name })
+          () => runProfileAction("/api/profiles/delete", { name }, btn)
         ), "danger");
 
         row.appendChild(label);
@@ -293,7 +325,7 @@
       button.textContent = label;
       const classes = `${buttonBaseClasses} ${buttonVariants[variant || "primary"] || buttonVariants.primary}`;
       button.className = classes;
-      button.addEventListener("click", handler);
+      button.addEventListener("click", (e) => handler(e, button));
       return button;
     }
 
@@ -303,7 +335,12 @@
       }
     }
 
-    async function runProfileAction(path, body) {
+    async function runProfileAction(path, body, button = null) {
+      const originalHtml = button ? button.innerHTML : "";
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = `<span class="flex items-center justify-center"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${button.textContent}</span>`;
+      }
       try {
         await api(path, {
           method: "POST",
@@ -314,12 +351,18 @@
         await loadCopySourceAvatars();
       } catch (error) {
         setStatus(error.message, true);
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = originalHtml;
+        }
       }
     }
 
     refreshBtn.addEventListener("click", loadStatus);
-    saveProfileBtn.addEventListener("click", () => {
-      runProfileAction("/api/profiles/save", { name: newProfileInput.value });
+    saveProfileBtn.addEventListener("click", async () => {
+      await runProfileAction("/api/profiles/save", { name: newProfileInput.value }, saveProfileBtn);
+      newProfileInput.value = "";
     });
     copyFromAvatarBtn.addEventListener("click", () => {
       const avatarId = copyFromAvatarSelect.value;
@@ -327,7 +370,7 @@
         setStatus("Select an avatar to copy from.", true);
         return;
       }
-      runProfileAction("/api/profiles/copy-from-avatar", { avatarId });
+      runProfileAction("/api/profiles/copy-from-avatar", { avatarId }, copyFromAvatarBtn);
     });
     deleteAvatarFolderBtn.addEventListener("click", () => {
       const avatarId = copyFromAvatarSelect.value;
@@ -338,12 +381,11 @@
 
       confirmAction(
         "Delete all profiles for the selected avatar? This cannot be undone.",
-        () => runProfileAction("/api/profiles/delete-avatar-folder", { avatarId })
+        () => runProfileAction("/api/profiles/delete-avatar-folder", { avatarId }, deleteAvatarFolderBtn)
       );
     });
     loadCopySourceAvatars();
     loadStatus();
-    setInterval(loadStatus, 2000);
   </script>
 </body>
 </html>
