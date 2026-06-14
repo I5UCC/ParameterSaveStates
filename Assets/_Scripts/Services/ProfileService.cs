@@ -12,9 +12,12 @@ public class ProfileService
 {
     private readonly OscService _oscService;
     private const string NameFile = "Name";
+    private const string ApplyProfileSettingsFile = "ApplyProfileSettings.json";
+    private const string AutoSyncSettingsFile = "AutoSync.json";
     private const string AvatarMetadataFolderName = "Avatars";
     private const string AvatarMetadataFilePattern = "avtr_*.json";
-    
+
+    private string _loadedAvatarId;
     private List<string> AvailableProfiles { get; set; } = new List<string>();
     
     private int PageSize { get; }
@@ -31,6 +34,7 @@ public class ProfileService
 
     public void LoadProfiles(string avatarId)
     {
+        _loadedAvatarId = avatarId;
         AvailableProfiles.Clear();
 
         if (string.IsNullOrWhiteSpace(avatarId))
@@ -128,8 +132,20 @@ public class ProfileService
             return;
         }
 
+        var excludedParameterNames = GetExcludedParameterNames();
+        if (!string.IsNullOrWhiteSpace(_loadedAvatarId))
+            excludedParameterNames.AddRange(GetAvatarExcludedParameterNames(_loadedAvatarId));
+        var exclusionSet = new HashSet<string>(excludedParameterNames, StringComparer.OrdinalIgnoreCase);
+        var skippedCount = 0;
+
         foreach (var item in dict)
         {
+            if (ShouldSkipParameter(item.Key, exclusionSet))
+            {
+                skippedCount++;
+                continue;
+            }
+
             switch (item.Value.OscType)
             {
                 case "f":
@@ -146,6 +162,57 @@ public class ProfileService
                     break;
             }
         }
+
+        if (skippedCount > 0)
+        {
+            Debug.Log($"ApplyProfile skipped {skippedCount} excluded parameter(s).");
+        }
+    }
+
+    public List<string> GetExcludedParameterNames()
+    {
+        var settingsPath = GetApplyProfileSettingsFilePath();
+        if (!File.Exists(settingsPath))
+        {
+            return new List<string>();
+        }
+
+        try
+        {
+            var json = File.ReadAllText(settingsPath);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return new List<string>();
+            }
+
+            var settings = JsonConvert.DeserializeObject<ApplyProfileSettings>(json);
+            if (settings?.excludedParameterNames == null)
+            {
+                return new List<string>();
+            }
+
+            return NormalizeExcludedParameterNames(settings.excludedParameterNames);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Failed to read apply profile settings: {ex.Message}");
+            return new List<string>();
+        }
+    }
+
+    public List<string> SaveExcludedParameterNames(IEnumerable<string> parameterNames)
+    {
+        var normalizedNames = NormalizeExcludedParameterNames(parameterNames ?? Array.Empty<string>());
+        var settings = new ApplyProfileSettings
+        {
+            excludedParameterNames = normalizedNames
+        };
+
+        var settingsPath = GetApplyProfileSettingsFilePath();
+        var json = JsonConvert.SerializeObject(settings, Formatting.Indented);
+        File.WriteAllText(settingsPath, json);
+
+        return normalizedNames;
     }
 
     public bool DeleteProfile(string displayName)
@@ -248,8 +315,8 @@ public class ProfileService
         foreach (var t in files)
         {
             var fileName = Path.GetFileName(t);
-            // Skip the avatar Name file — the target avatar has its own identity.
-            if (string.Equals(fileName, NameFile, StringComparison.Ordinal))
+            // Skip identity and per-avatar config files — the target avatar has its own.
+            if (!IsProfileFile(t))
                 continue;
 
             var sourceFile = Path.Combine(previousFolderPath, fileName);
@@ -490,6 +557,16 @@ public class ProfileService
         public string name;
     }
 
+    private sealed class ApplyProfileSettings
+    {
+        public List<string> excludedParameterNames = new List<string>();
+    }
+
+    private sealed class AvatarAutoSyncSettings
+    {
+        public List<string> parameterNames = new List<string>();
+    }
+
     /// <summary>Serialized representation of a single OSC parameter entry in a profile file.</summary>
     /// <remarks>JsonProperty names match the legacy ValueTuple serialization ("Item1"/"Item2") for backward compatibility.</remarks>
     private sealed class OscParameterEntry
@@ -516,8 +593,7 @@ public class ProfileService
                 continue;
             }
 
-            var hasProfiles = Directory.GetFiles(avatarDirectory, "*")
-                .Any(file => !string.Equals(Path.GetFileName(file), NameFile, StringComparison.Ordinal));
+            var hasProfiles = Directory.GetFiles(avatarDirectory, "*").Any(IsProfileFile);
             if (!hasProfiles)
             {
                 continue;
@@ -548,9 +624,130 @@ public class ProfileService
         return true;
     }
 
+    // ── Per-avatar auto sync ────────────────────────────────────────────────────
+
+    public List<string> GetAvatarAutoSyncParameterNames(string avatarId)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId)) return new List<string>();
+        var filePath = GetAvatarAutoSyncFilePath(avatarId);
+        if (!File.Exists(filePath)) return new List<string>();
+        try
+        {
+            var json = File.ReadAllText(filePath);
+            if (string.IsNullOrWhiteSpace(json)) return new List<string>();
+            var settings = JsonConvert.DeserializeObject<AvatarAutoSyncSettings>(json);
+            return NormalizeExcludedParameterNames(settings?.parameterNames ?? new List<string>());
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Failed to read auto-sync settings for avatar '{avatarId}': {ex.Message}");
+            return new List<string>();
+        }
+    }
+
+    public List<string> SaveAvatarAutoSyncParameterNames(string avatarId, IEnumerable<string> parameterNames)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId)) return new List<string>();
+        var normalized = NormalizeExcludedParameterNames(parameterNames ?? Array.Empty<string>());
+        EnsureAvatarFolder(avatarId);
+        var settings = new AvatarAutoSyncSettings { parameterNames = normalized };
+        File.WriteAllText(GetAvatarAutoSyncFilePath(avatarId), JsonConvert.SerializeObject(settings, Formatting.Indented));
+        return normalized;
+    }
+
+    // ── Per-avatar profile filters ──────────────────────────────────────────────
+
+    public List<string> GetAvatarExcludedParameterNames(string avatarId)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId)) return new List<string>();
+        var filePath = GetAvatarApplyProfileSettingsFilePath(avatarId);
+        if (!File.Exists(filePath)) return new List<string>();
+        try
+        {
+            var json = File.ReadAllText(filePath);
+            if (string.IsNullOrWhiteSpace(json)) return new List<string>();
+            var settings = JsonConvert.DeserializeObject<ApplyProfileSettings>(json);
+            return NormalizeExcludedParameterNames(settings?.excludedParameterNames ?? new List<string>());
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Failed to read per-avatar filter settings for avatar '{avatarId}': {ex.Message}");
+            return new List<string>();
+        }
+    }
+
+    public List<string> SaveAvatarExcludedParameterNames(string avatarId, IEnumerable<string> parameterNames)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId)) return new List<string>();
+        var normalized = NormalizeExcludedParameterNames(parameterNames ?? Array.Empty<string>());
+        EnsureAvatarFolder(avatarId);
+        var settings = new ApplyProfileSettings { excludedParameterNames = normalized };
+        File.WriteAllText(GetAvatarApplyProfileSettingsFilePath(avatarId), JsonConvert.SerializeObject(settings, Formatting.Indented));
+        return normalized;
+    }
+
     private static string GetProfilesRootPath()
     {
         return Path.Combine(Application.persistentDataPath, AppConstants.ProfilesRootFolderName);
+    }
+
+    private static string GetApplyProfileSettingsFilePath()
+    {
+        var profilesRootPath = GetProfilesRootPath();
+        if (!Directory.Exists(profilesRootPath))
+            Directory.CreateDirectory(profilesRootPath);
+        return Path.Combine(profilesRootPath, ApplyProfileSettingsFile);
+    }
+
+    private static string GetAvatarApplyProfileSettingsFilePath(string avatarId)
+        => Path.Combine(GetProfilesRootPath(), avatarId, ApplyProfileSettingsFile);
+
+    private static string GetAvatarAutoSyncFilePath(string avatarId)
+        => Path.Combine(GetProfilesRootPath(), avatarId, AutoSyncSettingsFile);
+
+    private static void EnsureAvatarFolder(string avatarId)
+    {
+        var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
+        if (!Directory.Exists(folderPath))
+            Directory.CreateDirectory(folderPath);
+    }
+
+    /// <summary>Returns true for files that are actual saved profiles (not identity/config files).</summary>
+    private static bool IsProfileFile(string filePath)
+    {
+        var fileName = Path.GetFileName(filePath);
+        return !string.Equals(fileName, NameFile, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(fileName, ApplyProfileSettingsFile, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(fileName, AutoSyncSettingsFile, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<string> NormalizeExcludedParameterNames(IEnumerable<string> parameterNames)
+    {
+        return parameterNames
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static bool ShouldSkipParameter(string parameterPath, HashSet<string> exclusionSet)
+    {
+        if (exclusionSet == null || exclusionSet.Count == 0 || string.IsNullOrWhiteSpace(parameterPath))
+        {
+            return false;
+        }
+
+        if (exclusionSet.Contains(parameterPath))
+        {
+            return true;
+        }
+
+        var lastSlash = parameterPath.LastIndexOf('/');
+        var parameterName = lastSlash >= 0 && lastSlash < parameterPath.Length - 1
+            ? parameterPath.Substring(lastSlash + 1)
+            : parameterPath;
+        return exclusionSet.Contains(parameterName);
     }
 
     public bool RenameProfile(string displayName, string nameOverride)
@@ -623,7 +820,7 @@ public class ProfileService
     private static List<ProfileFileEntry> GetOrderedProfileEntries(string folderPath)
     {
         return Directory.GetFiles(folderPath, "*")
-            .Where(path => !string.Equals(Path.GetFileName(path), NameFile, StringComparison.Ordinal))
+            .Where(IsProfileFile)
             .Select(path =>
             {
                 var fileName = Path.GetFileName(path);

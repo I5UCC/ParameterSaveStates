@@ -12,6 +12,8 @@
 </head>
 <body class="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100 transition-colors">
   <div class="mx-auto w-full max-w-5xl px-5 py-6">
+
+    <!-- Header -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-semibold">Parameter Save States</h1>
       <div class="flex items-center gap-3">
@@ -21,64 +23,192 @@
       </div>
     </div>
 
+    <!-- Tabs -->
+    <div class="mb-4 flex gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800">
+      <button id="tabMain" class="flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none" onclick="switchTab('main')">
+        Profiles
+      </button>
+      <button id="tabSettings" class="flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none" onclick="switchTab('settings')">
+        Settings
+      </button>
+    </div>
+
+    <!-- Status bar -->
     <div id="status" class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-100">
       Loading...
     </div>
 
-    <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-      <div class="flex flex-wrap items-center gap-3 text-sm">
-        <span class="min-w-[140px] text-slate-600 dark:text-slate-400">Current Avatar</span>
-        <span id="currentAvatar" class="text-slate-900 dark:text-slate-200">-</span>
+    <!-- ══════════════════ MAIN PAGE ══════════════════ -->
+    <div id="pageMain">
+
+      <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+        <div class="flex flex-wrap items-center gap-3 text-sm">
+          <span class="min-w-[140px] text-slate-600 dark:text-slate-400">Current Avatar</span>
+          <span id="currentAvatar" class="text-slate-900 dark:text-slate-200">-</span>
+        </div>
+        <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+          <span class="min-w-[140px] text-slate-600 dark:text-slate-400">Previous Avatar</span>
+          <span id="previousAvatar" class="text-slate-900 dark:text-slate-200">-</span>
+        </div>
+        <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
+          <span class="min-w-[140px] text-slate-600 dark:text-slate-400">Connection</span>
+          <span id="connectionState" class="text-slate-900 dark:text-slate-200">-</span>
+        </div>
       </div>
-      <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
-        <span class="min-w-[140px] text-slate-600 dark:text-slate-400">Previous Avatar</span>
-        <span id="previousAvatar" class="text-slate-900 dark:text-slate-200">-</span>
+
+      <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+        <label for="newProfileInput" class="text-sm font-semibold text-slate-900 dark:text-slate-200">Profile Creation</label>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <input
+            id="newProfileInput"
+            type="text"
+            placeholder="Profile name (optional)"
+            class="flex-1 min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+          />
+          <button id="saveProfileBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:hover:bg-sky-400">
+            Save New
+          </button>
+        </div>
       </div>
-      <div class="mt-2 flex flex-wrap items-center gap-3 text-sm">
-        <span class="min-w-[140px] text-slate-600 dark:text-slate-400">Connection</span>
-        <span id="connectionState" class="text-slate-900 dark:text-slate-200">-</span>
+
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold">Profiles</h2>
+          <button id="refreshBtn" class="rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 dark:focus:ring-slate-400">
+            Refresh
+          </button>
+        </div>
+        <div id="profiles" class="mt-4 flex flex-col gap-2"></div>
       </div>
     </div>
 
-    <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-      <label for="copyFromAvatarSelect" class="text-sm font-semibold text-slate-900 dark:text-slate-200">Profile Management</label>
-      <div class="mt-3 flex flex-wrap items-center gap-3">
-        <select
-          id="copyFromAvatarSelect"
-          class="flex-1 min-w-[280px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-        ></select>
-        <button id="copyFromAvatarBtn" class="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 dark:focus:ring-slate-400">
-          Copy from selected avatar
-        </button>
-        <button id="deleteAvatarFolderBtn" class="rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400 disabled:cursor-not-allowed disabled:opacity-60">
-          Delete selected avatar folder
-        </button>
-      </div>
-    </div>
+    <!-- ══════════════════ SETTINGS PAGE ══════════════════ -->
+    <div id="pageSettings" class="hidden flex flex-col gap-4">
 
-    <div class="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-      <label for="newProfileInput" class="text-sm font-semibold text-slate-900 dark:text-slate-200">Profile Creation</label>
-      <div class="mt-3 flex flex-wrap items-center gap-3">
-        <input
-          id="newProfileInput"
-          type="text"
-          placeholder="Profile name (optional)"
-          class="flex-1 min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-        />
-        <button id="saveProfileBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:hover:bg-sky-400">
-          Save New
-        </button>
+      <!-- Profile Management -->
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+        <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Profile Management</h2>
+        <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">Copy or delete all profiles for a saved avatar.</p>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <div id="copyFromAvatarDropdown" class="relative flex-1 min-w-[280px]">
+            <button
+              id="copyFromAvatarTrigger"
+              type="button"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            >Select avatar...</button>
+            <div id="copyFromAvatarPanel" class="absolute z-30 mt-1 hidden w-full rounded-lg border border-slate-300 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-950">
+              <input
+                id="copyFromAvatarSearch"
+                type="text"
+                placeholder="Search avatars..."
+                class="mb-2 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              />
+              <div id="copyFromAvatarOptions" class="max-h-56 overflow-y-auto"></div>
+            </div>
+          </div>
+          <button id="copyFromAvatarBtn" class="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 dark:focus:ring-slate-400">
+            Copy from selected avatar
+          </button>
+          <button id="deleteAvatarFolderBtn" class="rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-400 disabled:cursor-not-allowed disabled:opacity-60">
+            Delete selected avatar folder
+          </button>
+        </div>
       </div>
-    </div>
 
-    <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold">Profiles</h2>
-        <button id="refreshBtn" class="rounded-lg border border-slate-300 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 dark:focus:ring-slate-400">
-          Refresh
-        </button>
+      <!-- Apply Profile Filters -->
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+        <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Apply Profile Filters</h2>
+
+        <!-- Global filters -->
+        <div class="mt-3">
+          <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Global Filters</p>
+          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Skipped for all avatars when applying any profile. One name per line.</p>
+          <div class="mt-2 flex flex-col gap-2">
+            <textarea
+              id="excludedParameterNamesInput"
+              rows="4"
+              placeholder="Enter Parameter Names"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            ></textarea>
+            <div class="flex justify-end">
+              <button id="saveExcludedParametersBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
+                Save Global Filters
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Per-avatar filters -->
+        <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+          <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Per-Avatar Filters</p>
+          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Applied in addition to global filters for the selected avatar. One name per line.</p>
+          <div class="mt-2 flex flex-col gap-2">
+            <div id="avatarFiltersDropdown" class="relative">
+              <button
+                id="avatarFiltersTrigger"
+                type="button"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              >Select avatar...</button>
+              <div id="avatarFiltersPanel" class="absolute z-30 mt-1 hidden w-full rounded-lg border border-slate-300 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-950">
+                <input
+                  id="avatarFiltersSearch"
+                  type="text"
+                  placeholder="Search avatars..."
+                  class="mb-2 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                />
+                <div id="avatarFiltersOptions" class="max-h-56 overflow-y-auto"></div>
+              </div>
+            </div>
+            <textarea
+              id="avatarFiltersParameterNamesInput"
+              rows="4"
+              placeholder="Enter Parameter Names"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            ></textarea>
+            <div class="flex justify-end">
+              <button id="saveAvatarFiltersBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
+                Save Avatar Filters
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div id="profiles" class="mt-4 flex flex-col gap-2"></div>
+
+      <!-- Avatar Parameter Auto Sync -->
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+        <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Avatar Parameter Auto Sync</h2>
+        <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">When switching into the selected avatar, the listed parameter names are copied from the previous avatar's last known values.</p>
+        <div class="mt-3 flex flex-col gap-2">
+          <div id="autoSyncDropdown" class="relative">
+            <button
+              id="autoSyncTrigger"
+              type="button"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            >Select avatar...</button>
+            <div id="autoSyncPanel" class="absolute z-30 mt-1 hidden w-full rounded-lg border border-slate-300 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-950">
+              <input
+                id="autoSyncSearch"
+                type="text"
+                placeholder="Search avatars..."
+                class="mb-2 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              />
+              <div id="autoSyncOptions" class="max-h-56 overflow-y-auto"></div>
+            </div>
+          </div>
+          <textarea
+            id="autoSyncParameterNamesInput"
+            rows="6"
+            placeholder="Enter Parameter Names"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+          ></textarea>
+          <div class="flex justify-end">
+            <button id="saveAutoSyncSettingsBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
+              Save Auto Sync
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -89,14 +219,53 @@
     const connectionStateEl = document.getElementById("connectionState");
     const profilesEl = document.getElementById("profiles");
     const newProfileInput = document.getElementById("newProfileInput");
-    const copyFromAvatarSelect = document.getElementById("copyFromAvatarSelect");
+    const copyFromAvatarDropdown = document.getElementById("copyFromAvatarDropdown");
+    const copyFromAvatarTrigger = document.getElementById("copyFromAvatarTrigger");
+    const copyFromAvatarPanel = document.getElementById("copyFromAvatarPanel");
+    const copyFromAvatarSearch = document.getElementById("copyFromAvatarSearch");
+    const copyFromAvatarOptionsEl = document.getElementById("copyFromAvatarOptions");
+    const excludedParameterNamesInput = document.getElementById("excludedParameterNamesInput");
+    const avatarFiltersDropdown = document.getElementById("avatarFiltersDropdown");
+    const avatarFiltersTrigger = document.getElementById("avatarFiltersTrigger");
+    const avatarFiltersPanel = document.getElementById("avatarFiltersPanel");
+    const avatarFiltersSearch = document.getElementById("avatarFiltersSearch");
+    const avatarFiltersOptionsEl = document.getElementById("avatarFiltersOptions");
+    const avatarFiltersParameterNamesInput = document.getElementById("avatarFiltersParameterNamesInput");
+    const autoSyncDropdown = document.getElementById("autoSyncDropdown");
+    const autoSyncTrigger = document.getElementById("autoSyncTrigger");
+    const autoSyncPanel = document.getElementById("autoSyncPanel");
+    const autoSyncSearch = document.getElementById("autoSyncSearch");
+    const autoSyncOptionsEl = document.getElementById("autoSyncOptions");
+    const autoSyncParameterNamesInput = document.getElementById("autoSyncParameterNamesInput");
 
     const refreshBtn = document.getElementById("refreshBtn");
     const saveProfileBtn = document.getElementById("saveProfileBtn");
     const copyFromAvatarBtn = document.getElementById("copyFromAvatarBtn");
     const deleteAvatarFolderBtn = document.getElementById("deleteAvatarFolderBtn");
+    const saveExcludedParametersBtn = document.getElementById("saveExcludedParametersBtn");
+    const saveAvatarFiltersBtn = document.getElementById("saveAvatarFiltersBtn");
+    const saveAutoSyncSettingsBtn = document.getElementById("saveAutoSyncSettingsBtn");
     const themeToggle = document.getElementById("themToggle");
 
+    // ── Tab navigation ──────────────────────────────────────────────────────────
+    const TAB_ACTIVE   = "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100";
+    const TAB_INACTIVE = "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100";
+
+    function switchTab(tab) {
+      const isMain = tab === "main";
+      document.getElementById("pageMain").classList.toggle("hidden", !isMain);
+      document.getElementById("pageSettings").classList.toggle("hidden", isMain);
+      document.getElementById("tabMain").className =
+        `flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none ${isMain ? TAB_ACTIVE : TAB_INACTIVE}`;
+      document.getElementById("tabSettings").className =
+        `flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none ${isMain ? TAB_INACTIVE : TAB_ACTIVE}`;
+      localStorage.setItem("activeTab", tab);
+    }
+
+    // Restore last active tab on load
+    switchTab(localStorage.getItem("activeTab") || "main");
+
+    // ── Theme ───────────────────────────────────────────────────────────────────
     function applyTheme(theme) {
       const normalized = theme === "light" ? "light" : "dark";
       if (normalized === "light") {
@@ -143,6 +312,8 @@
 
     themeToggle.addEventListener("click", toggleTheme);
     loadTheme();
+
+    // ── Status helpers ──────────────────────────────────────────────────────────
     const statusBaseClasses = "mb-4 rounded-lg border px-4 py-3 text-sm";
     const statusOkClasses = "border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-100";
     const statusErrorClasses = "border-rose-300 bg-rose-50 text-rose-900 dark:border-rose-500/60 dark:bg-rose-950/40 dark:text-rose-100";
@@ -178,9 +349,196 @@
       return id;
     }
 
+    // ── Status polling / SSE ────────────────────────────────────────────────────
     let statusPollTimer = null;
-
     let eventSource = null;
+    let lastStatus = null;
+    let lastKnownCurrentAvatar = "";
+    let lastKnownPreviousAvatar = "";
+    let copyFromAvatarOptions = [];
+    let settingsAvatarOptions = [];
+    let selectedCopyFromAvatarId = "";
+    let selectedAvatarFiltersId = "";
+    let selectedAutoSyncAvatarId = "";
+
+    class AvatarSearchDropdown {
+      static instances = [];
+
+      constructor(config) {
+        this.rootEl = config.rootEl;
+        this.triggerEl = config.triggerEl;
+        this.panelEl = config.panelEl;
+        this.searchEl = config.searchEl;
+        this.optionsEl = config.optionsEl;
+        this.placeholder = config.placeholder || "Select avatar...";
+        this.onSelected = typeof config.onSelected === "function" ? config.onSelected : () => {};
+        this.options = [];
+        this.selectedId = "";
+
+        this.init();
+        AvatarSearchDropdown.instances.push(this);
+      }
+
+      static closeAll(except = null) {
+        AvatarSearchDropdown.instances.forEach((instance) => {
+          if (instance !== except) {
+            instance.close();
+          }
+        });
+      }
+
+      init() {
+        this.triggerEl.addEventListener("click", () => {
+          const isOpen = !this.panelEl.classList.contains("hidden");
+          AvatarSearchDropdown.closeAll(this);
+          if (isOpen || this.triggerEl.disabled) {
+            this.close();
+            return;
+          }
+
+          this.open();
+        });
+
+        this.searchEl.addEventListener("input", () => this.renderOptions());
+        this.searchEl.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            this.close();
+            this.triggerEl.focus();
+          }
+        });
+      }
+
+      open() {
+        this.panelEl.classList.remove("hidden");
+        this.searchEl.focus();
+        this.searchEl.select();
+        this.renderOptions();
+      }
+
+      close() {
+        this.panelEl.classList.add("hidden");
+      }
+
+      updateTrigger() {
+        const selected = this.options.find((option) => option.avatarId === this.selectedId);
+        this.triggerEl.textContent = selected ? selected.label : this.placeholder;
+      }
+
+      select(avatarId, closePanel = true, notify = true) {
+        this.selectedId = avatarId || "";
+        this.updateTrigger();
+        this.renderOptions();
+        if (notify) {
+          this.onSelected(this.selectedId);
+        }
+        if (closePanel) {
+          this.close();
+        }
+      }
+
+      setOptions(options, preferredAvatarId) {
+        this.options = Array.isArray(options) ? options : [];
+        this.searchEl.value = "";
+
+        if (!this.options.length) {
+          this.selectedId = "";
+          this.triggerEl.textContent = "No avatars available";
+          this.triggerEl.disabled = true;
+          this.optionsEl.innerHTML = "";
+          this.onSelected("");
+          return "";
+        }
+
+        this.triggerEl.disabled = false;
+        const selected = this.options.find((option) => option.avatarId === preferredAvatarId)
+          || this.options[0];
+        this.selectedId = selected.avatarId;
+        this.updateTrigger();
+        this.renderOptions();
+        this.onSelected(this.selectedId);
+        return this.selectedId;
+      }
+
+      renderOptions() {
+        const query = (this.searchEl.value || "").trim().toLowerCase();
+        const filteredOptions = query.length === 0
+          ? this.options
+          : this.options.filter((option) =>
+            option.label.toLowerCase().includes(query)
+            || option.avatarId.toLowerCase().includes(query));
+
+        this.optionsEl.innerHTML = "";
+        if (!filteredOptions.length) {
+          const emptyEl = document.createElement("div");
+          emptyEl.className = "rounded-md px-2 py-1.5 text-sm text-slate-500 dark:text-slate-400";
+          emptyEl.textContent = "No matching avatars";
+          this.optionsEl.appendChild(emptyEl);
+          return;
+        }
+
+        filteredOptions.forEach((option) => {
+          const optionButton = document.createElement("button");
+          optionButton.type = "button";
+          optionButton.className = `w-full rounded-md px-2 py-1.5 text-left text-sm transition ${
+            option.avatarId === this.selectedId
+              ? "bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-100"
+              : "text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+          }`;
+          optionButton.textContent = option.label;
+          optionButton.addEventListener("click", () => this.select(option.avatarId, true, true));
+          this.optionsEl.appendChild(optionButton);
+        });
+      }
+    }
+
+    const copyFromAvatarPicker = new AvatarSearchDropdown({
+      rootEl: copyFromAvatarDropdown,
+      triggerEl: copyFromAvatarTrigger,
+      panelEl: copyFromAvatarPanel,
+      searchEl: copyFromAvatarSearch,
+      optionsEl: copyFromAvatarOptionsEl,
+      placeholder: "Select avatar...",
+      onSelected: (avatarId) => {
+        selectedCopyFromAvatarId = avatarId || "";
+        const hasSelection = !!selectedCopyFromAvatarId;
+        copyFromAvatarBtn.disabled = !hasSelection;
+        deleteAvatarFolderBtn.disabled = !hasSelection;
+      }
+    });
+
+    const avatarFiltersPicker = new AvatarSearchDropdown({
+      rootEl: avatarFiltersDropdown,
+      triggerEl: avatarFiltersTrigger,
+      panelEl: avatarFiltersPanel,
+      searchEl: avatarFiltersSearch,
+      optionsEl: avatarFiltersOptionsEl,
+      placeholder: "Select avatar...",
+      onSelected: (avatarId) => {
+        selectedAvatarFiltersId = avatarId || "";
+        loadAvatarFilters(selectedAvatarFiltersId);
+      }
+    });
+
+    const autoSyncPicker = new AvatarSearchDropdown({
+      rootEl: autoSyncDropdown,
+      triggerEl: autoSyncTrigger,
+      panelEl: autoSyncPanel,
+      searchEl: autoSyncSearch,
+      optionsEl: autoSyncOptionsEl,
+      placeholder: "Select avatar...",
+      onSelected: (avatarId) => {
+        selectedAutoSyncAvatarId = avatarId || "";
+        loadAvatarAutoSync(selectedAutoSyncAvatarId);
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      const clickedInsideDropdown = AvatarSearchDropdown.instances
+        .some((instance) => instance.rootEl.contains(event.target));
+      if (!clickedInsideDropdown) {
+        AvatarSearchDropdown.closeAll();
+      }
+    });
 
     async function loadStatus() {
       if (statusPollTimer) {
@@ -189,12 +547,24 @@
       }
       try {
         const data = await api("/api/status");
+        const avatarChanged = data.currentAvatar !== lastKnownCurrentAvatar
+          || data.previousAvatar !== lastKnownPreviousAvatar;
+        lastStatus = data;
+        lastKnownCurrentAvatar = data.currentAvatar || "";
+        lastKnownPreviousAvatar = data.previousAvatar || "";
         currentAvatarEl.textContent = formatAvatarDisplay(data.currentAvatar, data.avatarName);
         previousAvatarEl.textContent = formatAvatarDisplay(data.previousAvatar, data.previousAvatarName);
         connectionStateEl.textContent = data.connected ? "Connected" : "Waiting for VRChat";
         renderProfiles(data.profiles || []);
         setStatus(data.connected ? "Ready" : "Waiting for VRChat to connect...", false);
-        
+
+        if (avatarChanged) {
+          await loadCopySourceAvatars(true);
+          await populateSettingsAvatarSelectors({ preferCurrentAvatar: true });
+          if (selectedAvatarFiltersId) loadAvatarFilters(selectedAvatarFiltersId);
+          if (selectedAutoSyncAvatarId) loadAvatarAutoSync(selectedAutoSyncAvatarId);
+        }
+
         if (!data.connected || !data.currentAvatar) {
           statusPollTimer = setTimeout(loadStatus, 2000);
           if (eventSource) {
@@ -203,9 +573,7 @@
           }
         } else if (!eventSource) {
           eventSource = new EventSource("/api/events");
-          eventSource.onmessage = () => {
-            loadStatus();
-          };
+          eventSource.onmessage = () => { loadStatus(); };
           eventSource.onerror = () => {
             eventSource.close();
             eventSource = null;
@@ -222,6 +590,7 @@
       }
     }
 
+    // ── Avatar helpers ──────────────────────────────────────────────────────────
     function avatarDisplayName(avatar) {
       if (avatar.avatarName && avatar.avatarName.trim().length > 0) {
         return `${avatar.avatarName} (${avatar.avatarId})`;
@@ -229,48 +598,116 @@
       return avatar.avatarId;
     }
 
-    async function loadCopySourceAvatars() {
-      const previousSelection = copyFromAvatarSelect.value;
+    async function loadCopySourceAvatars(preferPreviousAvatar = false) {
+      const previousSelection = selectedCopyFromAvatarId;
       try {
         const data = await api("/api/avatars/with-profiles");
         const avatars = data.avatars || [];
-        copyFromAvatarSelect.innerHTML = "";
+        copyFromAvatarOptions = avatars
+          .filter((avatar) => avatar && avatar.avatarId)
+          .map((avatar) => ({
+            avatarId: avatar.avatarId,
+            label: avatarDisplayName(avatar)
+          }));
 
-        if (!avatars.length) {
-          const option = document.createElement("option");
-          option.value = "";
-          option.textContent = "No avatars with saved profiles";
-          copyFromAvatarSelect.appendChild(option);
-          copyFromAvatarSelect.disabled = true;
-          copyFromAvatarBtn.disabled = true;
-          deleteAvatarFolderBtn.disabled = true;
-          return;
-        }
+        const preferredAvatarId = preferPreviousAvatar && lastStatus && lastStatus.previousAvatar
+          ? lastStatus.previousAvatar
+          : previousSelection;
 
-        avatars.forEach((avatar) => {
-          const option = document.createElement("option");
-          option.value = avatar.avatarId;
-          option.textContent = avatarDisplayName(avatar);
-          copyFromAvatarSelect.appendChild(option);
-        });
-
-        const hasPreviousSelection = avatars.some((avatar) => avatar.avatarId === previousSelection);
-        copyFromAvatarSelect.value = hasPreviousSelection ? previousSelection : avatars[0].avatarId;
-        copyFromAvatarSelect.disabled = false;
-        copyFromAvatarBtn.disabled = false;
-        deleteAvatarFolderBtn.disabled = false;
+        copyFromAvatarPicker.setOptions(copyFromAvatarOptions, preferredAvatarId);
       } catch (error) {
-        copyFromAvatarSelect.innerHTML = "";
-        const option = document.createElement("option");
-        option.value = "";
-        option.textContent = "Unable to load avatars";
-        copyFromAvatarSelect.appendChild(option);
-        copyFromAvatarSelect.disabled = true;
+        selectedCopyFromAvatarId = "";
+        copyFromAvatarPicker.setOptions([], "");
         copyFromAvatarBtn.disabled = true;
         deleteAvatarFolderBtn.disabled = true;
       }
     }
 
+    // ── Filters ─────────────────────────────────────────────────────────────────
+    function parseParameterNames(rawValue) {
+      return (rawValue || "")
+        .split(/\r?\n/)
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0);
+    }
+
+    async function loadExcludedParameterNames() {
+      try {
+        const data = await api("/api/profile-apply-filters");
+        const names = Array.isArray(data.excludedParameterNames) ? data.excludedParameterNames : [];
+        excludedParameterNamesInput.value = names.join("\n");
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    // ── Settings avatar selectors ─────────────────────────────────────────────
+
+    async function populateSettingsAvatarSelectors(options = {}) {
+      const preferCurrentAvatar = !!options.preferCurrentAvatar;
+      settingsAvatarOptions = await buildAvatarOptions();
+      const currentAvatarId = lastStatus && lastStatus.currentAvatar ? lastStatus.currentAvatar : "";
+      const preferredSettingsAvatarId = preferCurrentAvatar ? currentAvatarId : "";
+
+      avatarFiltersPicker.setOptions(
+        settingsAvatarOptions,
+        preferredSettingsAvatarId || selectedAvatarFiltersId || currentAvatarId
+      );
+
+      autoSyncPicker.setOptions(
+        settingsAvatarOptions,
+        preferredSettingsAvatarId || selectedAutoSyncAvatarId || currentAvatarId
+      );
+    }
+
+    async function buildAvatarOptions() {
+      const seen = new Set();
+      const options = [];
+
+      function addAvatar(avatarId, avatarName) {
+        if (!avatarId || seen.has(avatarId)) return;
+        seen.add(avatarId);
+        options.push({ avatarId, label: formatAvatarDisplay(avatarId, avatarName) });
+      }
+
+      try {
+        const data = await api("/api/avatars/with-profiles");
+        (data.avatars || []).forEach(a => addAvatar(a.avatarId, a.avatarName));
+      } catch (_) {}
+
+      if (lastStatus) {
+        addAvatar(lastStatus.currentAvatar, lastStatus.avatarName);
+        addAvatar(lastStatus.previousAvatar, lastStatus.previousAvatarName);
+      }
+
+      return options;
+    }
+
+    // ── Per-avatar filters ────────────────────────────────────────────────────
+
+    async function loadAvatarFilters(avatarId) {
+      if (!avatarId) { avatarFiltersParameterNamesInput.value = ""; return; }
+      try {
+        const data = await api(`/api/avatar-profile-apply-filters?avatarId=${encodeURIComponent(avatarId)}`);
+        avatarFiltersParameterNamesInput.value = (data.parameterNames || []).join("\n");
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    // ── Per-avatar auto sync ─────────────────────────────────────────────────
+
+    async function loadAvatarAutoSync(avatarId) {
+      if (!avatarId) { autoSyncParameterNamesInput.value = ""; return; }
+      try {
+        const data = await api(`/api/avatar-parameter-auto-sync?avatarId=${encodeURIComponent(avatarId)}`);
+        autoSyncParameterNamesInput.value = (data.parameterNames || []).join("\n");
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    // ── Profile rendering ────────────────────────────────────────────────────────
     function renderProfiles(profiles) {
       profilesEl.innerHTML = "";
       if (!profiles.length) {
@@ -323,16 +760,13 @@
     function createButton(label, handler, variant) {
       const button = document.createElement("button");
       button.textContent = label;
-      const classes = `${buttonBaseClasses} ${buttonVariants[variant || "primary"] || buttonVariants.primary}`;
-      button.className = classes;
+      button.className = `${buttonBaseClasses} ${buttonVariants[variant || "primary"] || buttonVariants.primary}`;
       button.addEventListener("click", (e) => handler(e, button));
       return button;
     }
 
     function confirmAction(message, action) {
-      if (confirm(message)) {
-        action();
-      }
+      if (confirm(message)) action();
     }
 
     async function runProfileAction(path, body, button = null) {
@@ -359,33 +793,59 @@
       }
     }
 
+    // ── Event listeners ──────────────────────────────────────────────────────────
     refreshBtn.addEventListener("click", loadStatus);
+
     saveProfileBtn.addEventListener("click", async () => {
       await runProfileAction("/api/profiles/save", { name: newProfileInput.value }, saveProfileBtn);
       newProfileInput.value = "";
     });
+
+    saveExcludedParametersBtn.addEventListener("click", async () => {
+      const names = parseParameterNames(excludedParameterNamesInput.value);
+      await runProfileAction("/api/profile-apply-filters", { excludedParameterNames: names }, saveExcludedParametersBtn);
+      excludedParameterNamesInput.value = names.sort((a, b) => a.localeCompare(b)).join("\n");
+    });
+
+    saveAvatarFiltersBtn.addEventListener("click", async () => {
+      const avatarId = selectedAvatarFiltersId;
+      if (!avatarId) { setStatus("Select an avatar first.", true); return; }
+      const parameterNames = parseParameterNames(avatarFiltersParameterNamesInput.value);
+      await runProfileAction("/api/avatar-profile-apply-filters", { avatarId, parameterNames }, saveAvatarFiltersBtn);
+      avatarFiltersParameterNamesInput.value = parameterNames.sort((a, b) => a.localeCompare(b)).join("\n");
+    });
+
+    saveAutoSyncSettingsBtn.addEventListener("click", async () => {
+      const avatarId = selectedAutoSyncAvatarId;
+      if (!avatarId) { setStatus("Select an avatar first.", true); return; }
+      const parameterNames = parseParameterNames(autoSyncParameterNamesInput.value);
+      await runProfileAction("/api/avatar-parameter-auto-sync", { avatarId, parameterNames }, saveAutoSyncSettingsBtn);
+      autoSyncParameterNamesInput.value = parameterNames.sort((a, b) => a.localeCompare(b)).join("\n");
+    });
+
     copyFromAvatarBtn.addEventListener("click", () => {
-      const avatarId = copyFromAvatarSelect.value;
-      if (!avatarId) {
-        setStatus("Select an avatar to copy from.", true);
-        return;
-      }
+      const avatarId = selectedCopyFromAvatarId;
+      if (!avatarId) { setStatus("Select an avatar to copy from.", true); return; }
       runProfileAction("/api/profiles/copy-from-avatar", { avatarId }, copyFromAvatarBtn);
     });
-    deleteAvatarFolderBtn.addEventListener("click", () => {
-      const avatarId = copyFromAvatarSelect.value;
-      if (!avatarId) {
-        setStatus("Select an avatar to delete.", true);
-        return;
-      }
 
+    deleteAvatarFolderBtn.addEventListener("click", () => {
+      const avatarId = selectedCopyFromAvatarId;
+      if (!avatarId) { setStatus("Select an avatar to delete.", true); return; }
       confirmAction(
         "Delete all profiles for the selected avatar? This cannot be undone.",
         () => runProfileAction("/api/profiles/delete-avatar-folder", { avatarId }, deleteAvatarFolderBtn)
       );
     });
-    loadCopySourceAvatars();
-    loadStatus();
+
+    // ── Initial load ─────────────────────────────────────────────────────────────
+    loadCopySourceAvatars(true);
+    loadExcludedParameterNames();
+    loadStatus().then(async () => {
+      await populateSettingsAvatarSelectors({ preferCurrentAvatar: true });
+      if (selectedAvatarFiltersId) loadAvatarFilters(selectedAvatarFiltersId);
+      if (selectedAutoSyncAvatarId) loadAvatarAutoSync(selectedAutoSyncAvatarId);
+    });
   </script>
 </body>
 </html>

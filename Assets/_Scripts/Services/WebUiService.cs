@@ -355,6 +355,56 @@ public sealed class WebUiService : IDisposable
                 return;
             }
 
+            if (method == "GET" && path.Equals("/api/profile-apply-filters", StringComparison.OrdinalIgnoreCase))
+            {
+                WriteOk(context.Response, RunOnMainThread(GetProfileApplyFilters));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/profile-apply-filters", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var parameterNames = body["excludedParameterNames"]?.ToObject<List<string>>() ?? new List<string>();
+                WriteOk(context.Response, RunOnMainThread(() => SaveProfileApplyFilters(parameterNames)));
+                return;
+            }
+
+            if (method == "GET" && path.Equals("/api/avatar-parameter-auto-sync", StringComparison.OrdinalIgnoreCase))
+            {
+                var avatarId = GetQueryParam(request, "avatarId");
+                if (string.IsNullOrWhiteSpace(avatarId))
+                    throw new InvalidOperationException("avatarId is required");
+                WriteOk(context.Response, RunOnMainThread(() => GetAvatarAutoSync(avatarId)));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/avatar-parameter-auto-sync", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var avatarId = body.Value<string>("avatarId");
+                var parameterNames = body["parameterNames"]?.ToObject<List<string>>() ?? new List<string>();
+                WriteOk(context.Response, RunOnMainThread(() => SaveAvatarAutoSync(avatarId, parameterNames)));
+                return;
+            }
+
+            if (method == "GET" && path.Equals("/api/avatar-profile-apply-filters", StringComparison.OrdinalIgnoreCase))
+            {
+                var avatarId = GetQueryParam(request, "avatarId");
+                if (string.IsNullOrWhiteSpace(avatarId))
+                    throw new InvalidOperationException("avatarId is required");
+                WriteOk(context.Response, RunOnMainThread(() => GetAvatarProfileFilters(avatarId)));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/avatar-profile-apply-filters", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var avatarId = body.Value<string>("avatarId");
+                var parameterNames = body["parameterNames"]?.ToObject<List<string>>() ?? new List<string>();
+                WriteOk(context.Response, RunOnMainThread(() => SaveAvatarProfileFilters(avatarId, parameterNames)));
+                return;
+            }
+
             WriteJson(context.Response, new ApiResponse
             {
                 ok = false,
@@ -403,6 +453,49 @@ public sealed class WebUiService : IDisposable
         }
 
         return new { profiles = GetProfileNames(currentAvatar) };
+    }
+
+    private object GetProfileApplyFilters()
+    {
+        return new
+        {
+            excludedParameterNames = _profileService.GetExcludedParameterNames()
+        };
+    }
+
+    private object SaveProfileApplyFilters(List<string> parameterNames)
+    {
+        var savedNames = _profileService.SaveExcludedParameterNames(parameterNames ?? new List<string>());
+        return new
+        {
+            excludedParameterNames = savedNames
+        };
+    }
+
+    private object GetAvatarAutoSync(string avatarId)
+    {
+        return new { avatarId, parameterNames = _profileService.GetAvatarAutoSyncParameterNames(avatarId) };
+    }
+
+    private object SaveAvatarAutoSync(string avatarId, List<string> parameterNames)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId))
+            throw new InvalidOperationException("avatarId is required");
+        var saved = _profileService.SaveAvatarAutoSyncParameterNames(avatarId, parameterNames ?? new List<string>());
+        return new { avatarId, parameterNames = saved };
+    }
+
+    private object GetAvatarProfileFilters(string avatarId)
+    {
+        return new { avatarId, parameterNames = _profileService.GetAvatarExcludedParameterNames(avatarId) };
+    }
+
+    private object SaveAvatarProfileFilters(string avatarId, List<string> parameterNames)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId))
+            throw new InvalidOperationException("avatarId is required");
+        var saved = _profileService.SaveAvatarExcludedParameterNames(avatarId, parameterNames ?? new List<string>());
+        return new { avatarId, parameterNames = saved };
     }
 
     private object SaveProfile(string name)
@@ -680,6 +773,20 @@ public sealed class WebUiService : IDisposable
         }
 
         return Path.Combine(profilesRootPath, WebUiSettingsFileName);
+    }
+
+    private static string GetQueryParam(HttpListenerRequest request, string paramName)
+    {
+        var query = request.Url?.Query;
+        if (string.IsNullOrEmpty(query)) return null;
+        query = query.TrimStart('?');
+        foreach (var part in query.Split('&'))
+        {
+            var kv = part.Split(new[] { '=' }, 2);
+            if (kv.Length == 2 && string.Equals(Uri.UnescapeDataString(kv[0]), paramName, StringComparison.OrdinalIgnoreCase))
+                return Uri.UnescapeDataString(kv[1]);
+        }
+        return null;
     }
 
     private List<string> GetProfileNames(string avatarId)
