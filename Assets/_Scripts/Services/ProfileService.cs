@@ -12,7 +12,6 @@ public class ProfileService
 {
     private readonly OscService _oscService;
     private const string NameFile = "Name";
-    private const string ProfilesRootFolderName = "Profiles";
     private const string AvatarMetadataFolderName = "Avatars";
     private const string AvatarMetadataFilePattern = "avtr_*.json";
     
@@ -34,11 +33,24 @@ public class ProfileService
     {
         AvailableProfiles.Clear();
 
+        if (string.IsNullOrWhiteSpace(avatarId))
+        {
+            CurrentPage = 0;
+            return;
+        }
+
         var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
         if (!Directory.Exists(folderPath))
         {
             CurrentPage = 0;
             return;
+        }
+
+        // Recover from any stranded temp files left by an interrupted ReindexProfiles
+        foreach (var tempFile in Directory.GetFiles(folderPath, "__reorder_tmp_*"))
+        {
+            try { File.Delete(tempFile); }
+            catch (Exception ex) { Debug.LogWarning($"Failed to delete temp reorder file '{tempFile}': {ex.Message}"); }
         }
 
         var sortedFiles = GetOrderedProfileEntries(folderPath)
@@ -108,20 +120,26 @@ public class ProfileService
         }
 
         var json = File.ReadAllText(profilePath);
-        var dict = JsonConvert.DeserializeObject<Dictionary<string, (string, string)>>(json);
+        var dict = JsonConvert.DeserializeObject<Dictionary<string, OscParameterEntry>>(json);
+
+        if (dict == null || dict.Count == 0)
+        {
+            Debug.LogWarning($"Profile '{displayName}' is empty or could not be parsed.");
+            return;
+        }
 
         foreach (var item in dict)
         {
-            switch (item.Value.Item2)
+            switch (item.Value.OscType)
             {
                 case "f":
-                    _oscService.SendFloat(item.Key, float.Parse(item.Value.Item1));
+                    _oscService.SendFloat(item.Key, float.Parse(item.Value.Value, System.Globalization.CultureInfo.InvariantCulture));
                     break;
                 case "i":
-                    _oscService.SendInt(item.Key, int.Parse(item.Value.Item1));
+                    _oscService.SendInt(item.Key, int.Parse(item.Value.Value, System.Globalization.CultureInfo.InvariantCulture));
                     break;
                 case "T":
-                    _oscService.SendBool(item.Key, bool.Parse(item.Value.Item1));
+                    _oscService.SendBool(item.Key, bool.Parse(item.Value.Value));
                     break;
                 default:
                     Debug.LogError("Unknown OSC Type");
@@ -179,14 +197,7 @@ public class ProfileService
         {
             throw new Exception($"Request error: {request.error}");
         }
-
-        var req = request.downloadHandler.text;
-        var tree = OSCQueryRootNode.FromString(req);
-        var node = tree.GetNodeWithPath("/avatar/parameters");
-        var dict = GetParametersJson(node, queryProfile);
-
-        var json = JsonConvert.SerializeObject(dict, Formatting.Indented);
-
+        
         string filePath;
         if (!string.IsNullOrEmpty(existingProfile) && File.Exists(existingProfile))
         {
@@ -197,6 +208,19 @@ public class ProfileService
             var indexedFileName = $"{nextIndex}_{profileName}";
             filePath = Path.Combine(folderPath, indexedFileName);
         }
+
+        var req = request.downloadHandler.text;
+        var tree = OSCQueryRootNode.FromString(req);
+        var node = tree.GetNodeWithPath("/avatar/parameters");
+        if (node == null)
+        {
+            Debug.LogWarning("SaveProfile: /avatar/parameters node not found — avatar may have no parameters.");
+            File.WriteAllText(filePath, JsonConvert.SerializeObject(new Dictionary<string, OscParameterEntry>(), Formatting.Indented));
+            return true;
+        }
+        var dict = GetParametersJson(node, queryProfile);
+
+        var json = JsonConvert.SerializeObject(dict, Formatting.Indented);
 
         File.WriteAllText(filePath, json);
 
@@ -224,15 +248,19 @@ public class ProfileService
         foreach (var t in files)
         {
             var fileName = Path.GetFileName(t);
+            // Skip the avatar Name file — the target avatar has its own identity.
+            if (string.Equals(fileName, NameFile, StringComparison.Ordinal))
+                continue;
+
             var sourceFile = Path.Combine(previousFolderPath, fileName);
             var destFile = Path.Combine(currentFolderPath, fileName);
             File.Copy(sourceFile, destFile, true);
         }
     }
 
-    private Dictionary<string, (string value, string OscType)> GetParametersJson(OSCQueryNode node, OSCQueryServiceProfile queryProfile)
+    private Dictionary<string, OscParameterEntry> GetParametersJson(OSCQueryNode node, OSCQueryServiceProfile queryProfile)
     {
-        var dict = new Dictionary<string, (string value, string OscType)>();
+        var dict = new Dictionary<string, OscParameterEntry>();
         foreach (var content in node.Contents)
         {
             var value = content.Value.Value;
@@ -260,7 +288,11 @@ public class ProfileService
             }
             else
             {
-                dict.Add(content.Value.FullPath, (value[0].ToString(), content.Value.OscType));
+                dict.Add(content.Value.FullPath, new OscParameterEntry
+                {
+                    Value = value[0].ToString(),
+                    OscType = content.Value.OscType
+                });
             }
         }
 
@@ -458,6 +490,14 @@ public class ProfileService
         public string name;
     }
 
+    /// <summary>Serialized representation of a single OSC parameter entry in a profile file.</summary>
+    /// <remarks>JsonProperty names match the legacy ValueTuple serialization ("Item1"/"Item2") for backward compatibility.</remarks>
+    private sealed class OscParameterEntry
+    {
+        [JsonProperty("Item1")] public string Value;
+        [JsonProperty("Item2")] public string OscType;
+    }
+
     public List<(string avatarId, string avatarName)> GetAvatarsWithSavedProfiles()
     {
         var result = new List<(string avatarId, string avatarName)>();
@@ -510,7 +550,7 @@ public class ProfileService
 
     private static string GetProfilesRootPath()
     {
-        return Path.Combine(Application.persistentDataPath, ProfilesRootFolderName);
+        return Path.Combine(Application.persistentDataPath, AppConstants.ProfilesRootFolderName);
     }
 
     public bool RenameProfile(string displayName, string nameOverride)

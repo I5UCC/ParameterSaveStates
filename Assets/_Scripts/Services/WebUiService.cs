@@ -27,7 +27,6 @@ public sealed class WebUiService : IDisposable
     private readonly string _indexFilePath;
     private readonly int _port;
 
-    private const string ProfilesRootFolderName = "Profiles";
     private const string WebUiSettingsFileName = "WebUiSettings.json";
     private const string DefaultTheme = "dark";
 
@@ -111,6 +110,7 @@ public sealed class WebUiService : IDisposable
             Debug.LogWarning($"Failed to stop Web UI server cleanly: {ex}");
         }
 
+        try { _cts.Dispose(); } catch { /* ignore */ }
         _started = false;
     }
 
@@ -183,9 +183,9 @@ public sealed class WebUiService : IDisposable
             {
                 context.Response.OutputStream.Close();
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore close failures
+                Debug.Log($"Web UI response stream close failed (usually harmless): {ex.Message}");
             }
         }
     }
@@ -234,9 +234,11 @@ public sealed class WebUiService : IDisposable
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Client disconnected or server stopping
+            // Client disconnected or server stopping — log unexpected errors
+            if (!_cts.IsCancellationRequested)
+                Debug.Log($"Web UI event stream ended: {ex.Message}");
         }
         finally
         {
@@ -671,7 +673,7 @@ public sealed class WebUiService : IDisposable
 
     private static string GetWebUiSettingsFilePath()
     {
-        var profilesRootPath = Path.Combine(Application.persistentDataPath, ProfilesRootFolderName);
+        var profilesRootPath = Path.Combine(Application.persistentDataPath, AppConstants.ProfilesRootFolderName);
         if (!Directory.Exists(profilesRootPath))
         {
             Directory.CreateDirectory(profilesRootPath);

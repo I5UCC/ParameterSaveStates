@@ -298,6 +298,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         EnableEditButtons(profile, false);
 
         _profileService.OverrideProfile(_currentAvatar, profile.GetDisplayNameText().text);
+        RefreshProfiles();
     }
 
     public void RenameProfile(GameObject profile)
@@ -412,6 +413,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
             newButton.gameObject.SetActive(true);
             copyFromPreviousButton.gameObject.SetActive(true);
             SetStatusText();
+            RefreshProfiles();
         }
         catch (Exception e)
         {
@@ -575,7 +577,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
             case KeyboardMode.NewProfile:
                 SetStatusText("Saving Profile...");
                 SaveProfile();
-                RefreshProfiles();
                 break;
             case KeyboardMode.RenameProfile:
                 _profileService.RenameProfile(_profileToRename, _profileText);

@@ -59,10 +59,15 @@ public class OscService : IDisposable
         QueryServiceProfile = profile;
         Debug.Log("QueryRoot: " + QueryServiceProfile.address + ":" + QueryServiceProfile.port);
 
-        var test = Extensions.GetOSCTree(QueryServiceProfile.address, QueryServiceProfile.port);
-        test.Wait();
-        var tree = test.Result;
+        var tree = Extensions.GetOSCTree(QueryServiceProfile.address, QueryServiceProfile.port).GetAwaiter().GetResult();
         var node = tree.GetNodeWithPath("/avatar/change");
+        if (node?.Value == null || node.Value.Length == 0)
+        {
+            Debug.LogWarning("OscService: /avatar/change node has no value; cannot determine current avatar.");
+            _oscQuery.OnOscQueryServiceAdded -= HandleOscQueryServiceAdded;
+            OnVRChatConnected?.Invoke(QueryServiceProfile);
+            return;
+        }
         var currentAvatar = node.Value[0].ToString();
         Debug.Log("Current Avatar: " + currentAvatar);
 
@@ -77,6 +82,7 @@ public class OscService : IDisposable
         if (addressString != "/avatar/change") return;
 
         var newAvatar = values.ReadStringElement(0);
+        // previousAvatar is intentionally null here; callers track previous state themselves.
         OnAvatarChanged?.Invoke(null, newAvatar);
     }
 
@@ -84,6 +90,7 @@ public class OscService : IDisposable
     {
         QueryServiceProfile = null;
         _oscQuery.OnOscQueryServiceAdded += HandleOscQueryServiceAdded;
+        _oscQuery.RefreshServices();
     }
 
     public void SendFloat(string address, float value) => _sender.Send(address, value);
@@ -103,7 +110,8 @@ public class OscService : IDisposable
     {
         var hostName = Dns.GetHostName();
         return Dns.GetHostEntry(hostName).AddressList
-            .FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork);
+                   .FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork)
+               ?? IPAddress.Loopback;
     }
 
     public void Dispose()

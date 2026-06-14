@@ -11,9 +11,8 @@ public class WindowController : MonoBehaviour
     public bool hasTrayIcon = true;
     public Texture2D trayIconTex;
 
-    private const string ProfilesRootFolderName = "Profiles";
     private const string WebUiWindowSizeFileName = "WebUiWindowSize";
-    private const string WebUiWindowTitle = "Parameter Save States";
+    // WebUiWindowTitle lives in AppConstants — shared with TrayForm tooltip.
     private const int DefaultWebUiWindowWidth = 1200;
     private const int DefaultWebUiWindowHeight = 500;
     private const int MinWebUiWindowWidth = 640;
@@ -25,7 +24,6 @@ public class WindowController : MonoBehaviour
 
     private const int GWL_EXSTYLE = -0x14;
     private const int WS_EX_TOOLWINDOW = 0x0080;
-    private const int SWP_HIDEWINDOW = 0x0080;
     private const uint SW_RESTORE = 9;
     private const int SWP_NOMOVE = 0x0002;
     private const int SWP_NOZORDER = 0x0004;
@@ -411,7 +409,7 @@ public class WindowController : MonoBehaviour
 
     private static string GetWebUiWindowSizeFilePath()
     {
-        var profilesRootPath = Path.Combine(UnityEngine.Application.persistentDataPath, ProfilesRootFolderName);
+        var profilesRootPath = Path.Combine(UnityEngine.Application.persistentDataPath, AppConstants.ProfilesRootFolderName);
         return Path.Combine(profilesRootPath, WebUiWindowSizeFileName);
     }
 
@@ -420,7 +418,7 @@ public class WindowController : MonoBehaviour
         if (width < MinWebUiWindowWidth || height < MinWebUiWindowHeight)
             return;
 
-        var profilesRootPath = Path.Combine(UnityEngine.Application.persistentDataPath, ProfilesRootFolderName);
+        var profilesRootPath = Path.Combine(UnityEngine.Application.persistentDataPath, AppConstants.ProfilesRootFolderName);
         if (!Directory.Exists(profilesRootPath))
         {
             Directory.CreateDirectory(profilesRootPath);
@@ -490,7 +488,7 @@ public class WindowController : MonoBehaviour
             if (GetWindowText(hWnd, builder, builder.Capacity) <= 0)
                 return true;
 
-            if (builder.ToString().IndexOf(WebUiWindowTitle, StringComparison.OrdinalIgnoreCase) >= 0)
+            if (builder.ToString().IndexOf(AppConstants.WebUiWindowTitle, StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 foundHandle = hWnd;
                 return false;
@@ -522,12 +520,9 @@ public class WindowController : MonoBehaviour
 
     public bool HideUnityWindow()
     {
-        bool res = false;
-
-        res = MinimizeUnityWindow();
-        res = HideTaskbarIcon();
-
-        return res;
+        var minimized = MinimizeUnityWindow();
+        var hidden = HideTaskbarIcon();
+        return minimized && hidden;
     }
 }
 
@@ -546,6 +541,7 @@ public class TrayForm : System.Windows.Forms.Form
     private ToolStripMenuItem openWebUiItem;
     private ToolStripMenuItem openWebUiItemBrowser;
 
+
     public TrayForm(Texture2D tex = null)
     {
         trayMenu = new System.Windows.Forms.ContextMenuStrip();
@@ -563,7 +559,7 @@ public class TrayForm : System.Windows.Forms.Form
         trayMenu.Items.Add("Exit", CreateBitmap(Texture2D.whiteTexture), OnExit);
 
         trayIcon = new NotifyIcon();
-        trayIcon.Text = "Steameeter";
+        trayIcon.Text = AppConstants.WebUiWindowTitle;
         trayIcon.MouseDoubleClick += OnTrayIconMouseDoubleClick;
 
         trayIcon.ContextMenuStrip = trayMenu;
@@ -594,7 +590,7 @@ public class TrayForm : System.Windows.Forms.Form
 
     ~TrayForm()
     {
-        Dispose(true);
+        Dispose(false);
     }
 
     public void ShowTray()
@@ -609,7 +605,7 @@ public class TrayForm : System.Windows.Forms.Form
 
     protected void OnExit(object sender, EventArgs e)
     {
-        onExitCallback.Invoke();
+        onExitCallback?.Invoke();
     }
 
     public void SetOpenWebUiCallback(Action callback)
