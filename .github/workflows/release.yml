@@ -40,6 +40,7 @@ jobs:
           UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          PSS_BUILD_VERSION: ${{ github.ref_name }}
         with:
           targetPlatform: StandaloneWindows64
           buildName: ParameterSaveStates

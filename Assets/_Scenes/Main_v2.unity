@@ -744,6 +744,7 @@ MonoBehaviour:
   profileContainer: {fileID: 1646761751}
   statusText: {fileID: 1454829650}
   currentAvatarText: {fileID: 1287418242}
+  versionText: {fileID: 1976603887}
   copyFromPreviousButton: {fileID: 815986783}
   newButton: {fileID: 2062499451}
   cancelButton: {fileID: 1940461575}
@@ -4473,43 +4474,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 517902728}
   m_CullTransparentMesh: 0
---- !u!84 &552804225
-RenderTexture:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: Overlay RenderTexture
-  m_ImageContentsHash:
-    serializedVersion: 2
-    Hash: 00000000000000000000000000000000
-  m_IsAlphaChannelOptional: 0
-  serializedVersion: 6
-  m_Width: 1600
-  m_Height: 1000
-  m_AntiAliasing: 8
-  m_MipCount: -1
-  m_DepthStencilFormat: 94
-  m_ColorFormat: 4
-  m_MipMap: 0
-  m_GenerateMips: 1
-  m_SRGB: 1
-  m_UseDynamicScale: 0
-  m_UseDynamicScaleExplicit: 0
-  m_BindMS: 0
-  m_EnableCompatibleFormat: 1
-  m_EnableRandomWrite: 0
-  m_TextureSettings:
-    serializedVersion: 2
-    m_FilterMode: 2
-    m_Aniso: 1
-    m_MipBias: 0
-    m_WrapU: 1
-    m_WrapV: 1
-    m_WrapW: 1
-  m_Dimension: 2
-  m_VolumeDepth: 1
-  m_ShadowSamplingMode: 2
 --- !u!1 &560979794
 GameObject:
   m_ObjectHideFlags: 0
@@ -7524,7 +7488,7 @@ MonoBehaviour:
   steamVRHandlerPrefab: {fileID: 385247157}
   autoUpdateOverlay: 1
   simulateInEditor: 0
-  overlayTexture: {fileID: 552804225}
+  overlayTexture: {fileID: 913989865}
   cameraForTexture: {fileID: 925602069}
   renderTexWidthOverride: 1600
   renderTexHeightOverride: 1000
@@ -8052,6 +8016,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 909679011}
   m_CullTransparentMesh: 0
+--- !u!84 &913989865
+RenderTexture:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Overlay RenderTexture
+  m_ImageContentsHash:
+    serializedVersion: 2
+    Hash: 00000000000000000000000000000000
+  m_IsAlphaChannelOptional: 0
+  serializedVersion: 6
+  m_Width: 1600
+  m_Height: 1000
+  m_AntiAliasing: 8
+  m_MipCount: -1
+  m_DepthStencilFormat: 94
+  m_ColorFormat: 4
+  m_MipMap: 0
+  m_GenerateMips: 1
+  m_SRGB: 1
+  m_UseDynamicScale: 0
+  m_UseDynamicScaleExplicit: 0
+  m_BindMS: 0
+  m_EnableCompatibleFormat: 1
+  m_EnableRandomWrite: 0
+  m_TextureSettings:
+    serializedVersion: 2
+    m_FilterMode: 2
+    m_Aniso: 1
+    m_MipBias: 0
+    m_WrapU: 1
+    m_WrapV: 1
+    m_WrapW: 1
+  m_Dimension: 2
+  m_VolumeDepth: 1
+  m_ShadowSamplingMode: 2
 --- !u!1 &914509788
 GameObject:
   m_ObjectHideFlags: 0

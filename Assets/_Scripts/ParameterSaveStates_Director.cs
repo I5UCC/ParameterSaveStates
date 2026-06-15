@@ -28,6 +28,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
     
     public Text statusText;
     public Text currentAvatarText;
+    public Text versionText;
 
     [Space(10)] 
     
@@ -76,6 +77,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     private void Start()
     {
+        ApplyVersionText();
         _mainThreadDispatcher = UnityMainThreadDispatcher.Instance();
         
         _oscService = new OscService();
@@ -516,6 +518,11 @@ public class ParameterSaveStates_Director : MonoBehaviour
         currentAvatarText.text = !string.IsNullOrWhiteSpace(customName) 
             ? customName
             : _currentAvatar;
+    }
+
+    private void ApplyVersionText()
+    {
+        versionText.text = $"ParameterSaveStates {AppConstants.CurrentVersion}";
     }
 
     private void SetStatusText(string text = "")

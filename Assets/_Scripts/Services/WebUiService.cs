@@ -440,7 +440,8 @@ public sealed class WebUiService : IDisposable
             avatarName,
             previousAvatarName,
             profiles,
-            baseUrl = BaseUrl
+            baseUrl = BaseUrl,
+            version = AppConstants.CurrentVersion
         };
     }
 

@@ -15,7 +15,7 @@
 
     <!-- Header -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold">Parameter Save States</h1>
+      <h1 class="text-2xl font-semibold">Parameter Save States <span id="appVersion" class="ml-2 text-base font-normal text-slate-500 dark:text-slate-400"></span></h1>
       <div class="flex items-center gap-3">
         <button id="themToggle" class="rounded-lg border border-slate-300 bg-slate-100 px-2 py-1.5 text-xs font-semibold text-slate-900 transition hover:bg-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700">
           🌙 Dark
@@ -246,6 +246,7 @@
     const saveAvatarFiltersBtn = document.getElementById("saveAvatarFiltersBtn");
     const saveAutoSyncSettingsBtn = document.getElementById("saveAutoSyncSettingsBtn");
     const themeToggle = document.getElementById("themToggle");
+    const appVersionEl = document.getElementById("appVersion");
 
     // ── Tab navigation ──────────────────────────────────────────────────────────
     const TAB_ACTIVE   = "bg-white text-slate-900 shadow-sm dark:bg-slate-700 dark:text-slate-100";
@@ -555,6 +556,7 @@
         currentAvatarEl.textContent = formatAvatarDisplay(data.currentAvatar, data.avatarName);
         previousAvatarEl.textContent = formatAvatarDisplay(data.previousAvatar, data.previousAvatarName);
         connectionStateEl.textContent = data.connected ? "Connected" : "Waiting for VRChat";
+        appVersionEl.textContent = data.version ? data.version : "";
         renderProfiles(data.profiles || []);
         setStatus(data.connected ? "Ready" : "Waiting for VRChat to connect...", false);
 
