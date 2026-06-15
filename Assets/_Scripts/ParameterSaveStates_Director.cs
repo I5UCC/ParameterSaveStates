@@ -522,6 +522,12 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     private void ApplyVersionText()
     {
+        if (versionText == null)
+        {
+            Debug.LogWarning("Version text is not assigned. Skipping version label update.");
+            return;
+        }
+
         versionText.text = $"ParameterSaveStates {AppConstants.CurrentVersion}";
     }
 
