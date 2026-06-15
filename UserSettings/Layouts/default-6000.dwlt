@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 2560
     height: 1367
   m_ShowMode: 4
-  m_Title: Game
+  m_Title: Scene
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -1110,7 +1110,7 @@ MonoBehaviour:
   m_Rotation:
     m_Target: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
     speed: 2
-    m_Value: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
+    m_Value: {x: -0.7071068, y: 0, z: -0, w: -0.7071068}
   m_Size:
     m_Target: 2.0557094
     speed: 2
@@ -1194,7 +1194,7 @@ MonoBehaviour:
       m_LastClickedID:
         m_Data: 0
       m_ExpandedIDs:
-      - m_Data: -1366
+      - m_Data: -1402
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1351,8 +1351,6 @@ MonoBehaviour:
       m_Data: 27340
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 27584
-    - m_Data: 27586
     - m_Data: 27588
     - m_Data: 27590
     - m_Data: 27592
@@ -1371,6 +1369,8 @@ MonoBehaviour:
     - m_Data: 27618
     - m_Data: 27620
     - m_Data: 27622
+    - m_Data: 27624
+    - m_Data: 27626
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1404,8 +1404,6 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 27584
-    - m_Data: 27586
     - m_Data: 27588
     - m_Data: 27590
     - m_Data: 27592
@@ -1424,6 +1422,8 @@ MonoBehaviour:
     - m_Data: 27618
     - m_Data: 27620
     - m_Data: 27622
+    - m_Data: 27624
+    - m_Data: 27626
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
