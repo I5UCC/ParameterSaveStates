@@ -50,6 +50,7 @@ jobs:
           targetPlatform: StandaloneWindows64
           buildName: ParameterSaveStates
           buildsPath: build
+          allowDirtyBuild: true
 
       - name: Create app.vrmanifest in build directory
         run: |
