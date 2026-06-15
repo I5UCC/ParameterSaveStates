@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
@@ -26,6 +28,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
     
     public Text statusText;
     public Text currentAvatarText;
+    public Text versionText;
 
     [Space(10)] 
     
@@ -74,6 +77,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
     private void Start()
     {
+        ApplyVersionText();
         _mainThreadDispatcher = UnityMainThreadDispatcher.Instance();
         
         _oscService = new OscService();
@@ -298,6 +302,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         EnableEditButtons(profile, false);
 
         _profileService.OverrideProfile(_currentAvatar, profile.GetDisplayNameText().text);
+        RefreshProfiles();
     }
 
     public void RenameProfile(GameObject profile)
@@ -412,6 +417,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
             newButton.gameObject.SetActive(true);
             copyFromPreviousButton.gameObject.SetActive(true);
             SetStatusText();
+            RefreshProfiles();
         }
         catch (Exception e)
         {
@@ -444,11 +450,62 @@ public class ParameterSaveStates_Director : MonoBehaviour
         
         _mainThreadDispatcher.Enqueue(() =>
         {
+            ApplyAutoSyncedParametersForAvatar(newAvatar);
             SetStatusText();
             UpdateCurrentAvatarDisplay();
             RefreshProfiles();
             _webUiService?.NotifyStateChanged();
         });
+    }
+
+    private void ApplyAutoSyncedParametersForAvatar(string avatarId)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId) || _oscService == null || _profileService == null)
+            return;
+
+        var parameterNames = _profileService.GetAvatarAutoSyncParameterNames(avatarId);
+        if (parameterNames.Count == 0)
+            return;
+
+        var snapshot = _oscService.GetLastAvatarParameterSnapshot();
+        if (snapshot.Count == 0)
+            return;
+
+        var selectedNames = new HashSet<string>(parameterNames, StringComparer.OrdinalIgnoreCase);
+        var appliedCount = 0;
+        foreach (var pair in snapshot)
+        {
+            var parameterPath = pair.Key;
+            if (string.IsNullOrWhiteSpace(parameterPath)) continue;
+
+            var slashIndex = parameterPath.LastIndexOf('/');
+            var leafName = slashIndex >= 0 && slashIndex < parameterPath.Length - 1
+                ? parameterPath.Substring(slashIndex + 1)
+                : parameterPath;
+            if (!selectedNames.Contains(parameterPath) && !selectedNames.Contains(leafName)) continue;
+
+            var value = pair.Value;
+            if (value == null) continue;
+
+            switch (value.OscType)
+            {
+                case "f":
+                    if (float.TryParse(value.Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var floatValue))
+                    { _oscService.SendFloat(parameterPath, floatValue); appliedCount++; }
+                    break;
+                case "i":
+                    if (int.TryParse(value.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue))
+                    { _oscService.SendInt(parameterPath, intValue); appliedCount++; }
+                    break;
+                case "T":
+                    if (bool.TryParse(value.Value, out var boolValue))
+                    { _oscService.SendBool(parameterPath, boolValue); appliedCount++; }
+                    break;
+            }
+        }
+
+        if (appliedCount > 0)
+            Debug.Log($"Auto-synced {appliedCount} selected parameter(s) for avatar '{avatarId}'.");
     }
 
     #endregion
@@ -461,6 +518,17 @@ public class ParameterSaveStates_Director : MonoBehaviour
         currentAvatarText.text = !string.IsNullOrWhiteSpace(customName) 
             ? customName
             : _currentAvatar;
+    }
+
+    private void ApplyVersionText()
+    {
+        if (versionText == null)
+        {
+            Debug.LogWarning("Version text is not assigned. Skipping version label update.");
+            return;
+        }
+
+        versionText.text = $"ParameterSaveStates {AppConstants.CurrentVersion}";
     }
 
     private void SetStatusText(string text = "")
@@ -575,7 +643,6 @@ public class ParameterSaveStates_Director : MonoBehaviour
             case KeyboardMode.NewProfile:
                 SetStatusText("Saving Profile...");
                 SaveProfile();
-                RefreshProfiles();
                 break;
             case KeyboardMode.RenameProfile:
                 _profileService.RenameProfile(_profileToRename, _profileText);

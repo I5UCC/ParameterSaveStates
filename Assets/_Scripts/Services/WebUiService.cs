@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -9,6 +10,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PimDeWitte.UnityMainThreadDispatcher;
 using UnityEngine;
+using CompressionLevel = System.IO.Compression.CompressionLevel;
 
 public sealed class WebUiService : IDisposable
 {
@@ -27,7 +29,6 @@ public sealed class WebUiService : IDisposable
     private readonly string _indexFilePath;
     private readonly int _port;
 
-    private const string ProfilesRootFolderName = "Profiles";
     private const string WebUiSettingsFileName = "WebUiSettings.json";
     private const string DefaultTheme = "dark";
 
@@ -111,6 +112,7 @@ public sealed class WebUiService : IDisposable
             Debug.LogWarning($"Failed to stop Web UI server cleanly: {ex}");
         }
 
+        try { _cts.Dispose(); } catch { /* ignore */ }
         _started = false;
     }
 
@@ -183,9 +185,9 @@ public sealed class WebUiService : IDisposable
             {
                 context.Response.OutputStream.Close();
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore close failures
+                Debug.Log($"Web UI response stream close failed (usually harmless): {ex.Message}");
             }
         }
     }
@@ -234,9 +236,11 @@ public sealed class WebUiService : IDisposable
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Client disconnected or server stopping
+            // Client disconnected or server stopping — log unexpected errors
+            if (!_cts.IsCancellationRequested)
+                Debug.Log($"Web UI event stream ended: {ex.Message}");
         }
         finally
         {
@@ -339,6 +343,21 @@ public sealed class WebUiService : IDisposable
                 return;
             }
 
+            if (method == "GET" && path.Equals("/api/profiles/export", StringComparison.OrdinalIgnoreCase))
+            {
+                var archive = RunOnMainThread(ExportProfilesArchive);
+                var fileName = $"profiles-export-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+                WriteFile(context.Response, archive, fileName, "application/zip", 200);
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/profiles/import", StringComparison.OrdinalIgnoreCase))
+            {
+                var archiveBytes = ReadBinaryBody(request);
+                WriteOk(context.Response, RunOnMainThread(() => ImportProfilesArchive(archiveBytes)));
+                return;
+            }
+
             if (method == "GET" && path.Equals("/api/theme", StringComparison.OrdinalIgnoreCase))
             {
                 WriteOk(context.Response, new { theme = LoadTheme() });
@@ -350,6 +369,56 @@ public sealed class WebUiService : IDisposable
                 var body = ReadJsonBody(request);
                 var theme = body.Value<string>("theme");
                 WriteOk(context.Response, new { theme = SaveTheme(theme) });
+                return;
+            }
+
+            if (method == "GET" && path.Equals("/api/profile-apply-filters", StringComparison.OrdinalIgnoreCase))
+            {
+                WriteOk(context.Response, RunOnMainThread(GetProfileApplyFilters));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/profile-apply-filters", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var parameterNames = body["excludedParameterNames"]?.ToObject<List<string>>() ?? new List<string>();
+                WriteOk(context.Response, RunOnMainThread(() => SaveProfileApplyFilters(parameterNames)));
+                return;
+            }
+
+            if (method == "GET" && path.Equals("/api/avatar-parameter-auto-sync", StringComparison.OrdinalIgnoreCase))
+            {
+                var avatarId = GetQueryParam(request, "avatarId");
+                if (string.IsNullOrWhiteSpace(avatarId))
+                    throw new InvalidOperationException("avatarId is required");
+                WriteOk(context.Response, RunOnMainThread(() => GetAvatarAutoSync(avatarId)));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/avatar-parameter-auto-sync", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var avatarId = body.Value<string>("avatarId");
+                var parameterNames = body["parameterNames"]?.ToObject<List<string>>() ?? new List<string>();
+                WriteOk(context.Response, RunOnMainThread(() => SaveAvatarAutoSync(avatarId, parameterNames)));
+                return;
+            }
+
+            if (method == "GET" && path.Equals("/api/avatar-profile-apply-filters", StringComparison.OrdinalIgnoreCase))
+            {
+                var avatarId = GetQueryParam(request, "avatarId");
+                if (string.IsNullOrWhiteSpace(avatarId))
+                    throw new InvalidOperationException("avatarId is required");
+                WriteOk(context.Response, RunOnMainThread(() => GetAvatarProfileFilters(avatarId)));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/avatar-profile-apply-filters", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var avatarId = body.Value<string>("avatarId");
+                var parameterNames = body["parameterNames"]?.ToObject<List<string>>() ?? new List<string>();
+                WriteOk(context.Response, RunOnMainThread(() => SaveAvatarProfileFilters(avatarId, parameterNames)));
                 return;
             }
 
@@ -388,7 +457,8 @@ public sealed class WebUiService : IDisposable
             avatarName,
             previousAvatarName,
             profiles,
-            baseUrl = BaseUrl
+            baseUrl = BaseUrl,
+            version = AppConstants.CurrentVersion
         };
     }
 
@@ -401,6 +471,49 @@ public sealed class WebUiService : IDisposable
         }
 
         return new { profiles = GetProfileNames(currentAvatar) };
+    }
+
+    private object GetProfileApplyFilters()
+    {
+        return new
+        {
+            excludedParameterNames = _profileService.GetExcludedParameterNames()
+        };
+    }
+
+    private object SaveProfileApplyFilters(List<string> parameterNames)
+    {
+        var savedNames = _profileService.SaveExcludedParameterNames(parameterNames ?? new List<string>());
+        return new
+        {
+            excludedParameterNames = savedNames
+        };
+    }
+
+    private object GetAvatarAutoSync(string avatarId)
+    {
+        return new { avatarId, parameterNames = _profileService.GetAvatarAutoSyncParameterNames(avatarId) };
+    }
+
+    private object SaveAvatarAutoSync(string avatarId, List<string> parameterNames)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId))
+            throw new InvalidOperationException("avatarId is required");
+        var saved = _profileService.SaveAvatarAutoSyncParameterNames(avatarId, parameterNames ?? new List<string>());
+        return new { avatarId, parameterNames = saved };
+    }
+
+    private object GetAvatarProfileFilters(string avatarId)
+    {
+        return new { avatarId, parameterNames = _profileService.GetAvatarExcludedParameterNames(avatarId) };
+    }
+
+    private object SaveAvatarProfileFilters(string avatarId, List<string> parameterNames)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId))
+            throw new InvalidOperationException("avatarId is required");
+        var saved = _profileService.SaveAvatarExcludedParameterNames(avatarId, parameterNames ?? new List<string>());
+        return new { avatarId, parameterNames = saved };
     }
 
     private object SaveProfile(string name)
@@ -608,6 +721,126 @@ public sealed class WebUiService : IDisposable
         };
     }
 
+    private byte[] ExportProfilesArchive()
+    {
+        var profilesRootPath = Path.Combine(Application.persistentDataPath, AppConstants.ProfilesRootFolderName);
+        if (!Directory.Exists(profilesRootPath))
+        {
+            throw new InvalidOperationException("Profiles folder not found");
+        }
+
+        var files = Directory.GetFiles(profilesRootPath, "*", SearchOption.AllDirectories);
+        if (files.Length == 0)
+        {
+            throw new InvalidOperationException("Profiles folder is empty");
+        }
+
+        using var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, true))
+        {
+            foreach (var filePath in files)
+            {
+                var relativePath = GetRelativePath(profilesRootPath, filePath)
+                    .Replace(Path.DirectorySeparatorChar, '/');
+                archive.CreateEntryFromFile(filePath, relativePath, CompressionLevel.Optimal);
+            }
+        }
+
+        return stream.ToArray();
+    }
+
+    private object ImportProfilesArchive(byte[] archiveBytes)
+    {
+        if (archiveBytes == null || archiveBytes.Length == 0)
+        {
+            throw new InvalidOperationException("Archive body is empty");
+        }
+
+        var profilesRootPath = Path.Combine(Application.persistentDataPath, AppConstants.ProfilesRootFolderName);
+        if (!Directory.Exists(profilesRootPath))
+        {
+            Directory.CreateDirectory(profilesRootPath);
+        }
+
+        var tempRoot = Path.Combine(Application.temporaryCachePath, $"profiles-import-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            using (var stream = new MemoryStream(archiveBytes, false))
+            using (var archive = new ZipArchive(stream, ZipArchiveMode.Read, false))
+            {
+                if (archive.Entries.Count == 0)
+                {
+                    throw new InvalidOperationException("Archive has no files");
+                }
+
+                foreach (var entry in archive.Entries)
+                {
+                    if (string.IsNullOrEmpty(entry.Name))
+                    {
+                        continue;
+                    }
+
+                    var normalizedEntryPath = entry.FullName.Replace('\\', '/');
+                    var destinationPath = Path.GetFullPath(Path.Combine(tempRoot, normalizedEntryPath));
+                    if (!destinationPath.StartsWith(tempRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException("Archive contains invalid file path");
+                    }
+
+                    var destinationDir = Path.GetDirectoryName(destinationPath);
+                    if (!string.IsNullOrEmpty(destinationDir) && !Directory.Exists(destinationDir))
+                    {
+                        Directory.CreateDirectory(destinationDir);
+                    }
+
+                    using var sourceStream = entry.Open();
+                    using var destinationStream = File.Create(destinationPath);
+                    sourceStream.CopyTo(destinationStream);
+                }
+            }
+
+            var extractedFiles = Directory.GetFiles(tempRoot, "*", SearchOption.AllDirectories);
+            foreach (var sourcePath in extractedFiles)
+            {
+                var relativePath = GetRelativePath(tempRoot, sourcePath);
+                var targetPath = Path.Combine(profilesRootPath, relativePath);
+                var targetDir = Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                }
+
+                File.Copy(sourcePath, targetPath, true);
+            }
+
+            NotifyStateChanged();
+            return new
+            {
+                importedFiles = extractedFiles.Length
+            };
+        }
+        catch (InvalidDataException)
+        {
+            throw new InvalidOperationException("Invalid zip archive");
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(tempRoot))
+                {
+                    Directory.Delete(tempRoot, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Failed to clean temporary import folder: {ex.Message}");
+            }
+        }
+    }
+
     private string LoadTheme()
     {
         var settingsPath = GetWebUiSettingsFilePath();
@@ -671,13 +904,27 @@ public sealed class WebUiService : IDisposable
 
     private static string GetWebUiSettingsFilePath()
     {
-        var profilesRootPath = Path.Combine(Application.persistentDataPath, ProfilesRootFolderName);
+        var profilesRootPath = Path.Combine(Application.persistentDataPath, AppConstants.ProfilesRootFolderName);
         if (!Directory.Exists(profilesRootPath))
         {
             Directory.CreateDirectory(profilesRootPath);
         }
 
         return Path.Combine(profilesRootPath, WebUiSettingsFileName);
+    }
+
+    private static string GetQueryParam(HttpListenerRequest request, string paramName)
+    {
+        var query = request.Url?.Query;
+        if (string.IsNullOrEmpty(query)) return null;
+        query = query.TrimStart('?');
+        foreach (var part in query.Split('&'))
+        {
+            var kv = part.Split(new[] { '=' }, 2);
+            if (kv.Length == 2 && string.Equals(Uri.UnescapeDataString(kv[0]), paramName, StringComparison.OrdinalIgnoreCase))
+                return Uri.UnescapeDataString(kv[1]);
+        }
+        return null;
     }
 
     private List<string> GetProfileNames(string avatarId)
@@ -714,6 +961,32 @@ public sealed class WebUiService : IDisposable
         return JObject.Parse(body);
     }
 
+    private static byte[] ReadBinaryBody(HttpListenerRequest request)
+    {
+        if (!request.HasEntityBody)
+        {
+            return Array.Empty<byte>();
+        }
+
+        using var stream = new MemoryStream();
+        request.InputStream.CopyTo(stream);
+        return stream.ToArray();
+    }
+
+    private static string GetRelativePath(string rootPath, string fullPath)
+    {
+        var normalizedRoot = Path.GetFullPath(rootPath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        var normalizedFull = Path.GetFullPath(fullPath);
+        if (!normalizedFull.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Path is outside expected root");
+        }
+
+        return normalizedFull.Substring(normalizedRoot.Length);
+    }
+
     private void WriteOk(HttpListenerResponse response, object data)
     {
         WriteJson(response, new ApiResponse
@@ -736,6 +1009,12 @@ public sealed class WebUiService : IDisposable
         response.ContentType = contentType;
         response.ContentLength64 = bytes.Length;
         response.OutputStream.Write(bytes, 0, bytes.Length);
+    }
+
+    private static void WriteFile(HttpListenerResponse response, byte[] bytes, string fileName, string contentType, int statusCode)
+    {
+        response.Headers["Content-Disposition"] = $"attachment; filename=\"{fileName}\"";
+        WriteBytes(response, bytes, contentType, statusCode);
     }
 
     private const string FallbackIndexHtml = @"<!doctype html>
