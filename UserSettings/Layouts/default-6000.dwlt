@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 2560
     height: 1367
   m_ShowMode: 4
-  m_Title: Scene
+  m_Title: Game
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -1190,16 +1190,11 @@ MonoBehaviour:
   m_SceneHierarchy:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
-      m_SelectedIDs:
-      - m_Data: 26138
+      m_SelectedIDs: []
       m_LastClickedID:
-        m_Data: 26138
+        m_Data: 0
       m_ExpandedIDs:
-      - m_Data: -1354
-      - m_Data: 26086
-      - m_Data: 26138
-      - m_Data: 26272
-      - m_Data: 26340
+      - m_Data: -1366
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1356,7 +1351,6 @@ MonoBehaviour:
       m_Data: 27340
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 27582
     - m_Data: 27584
     - m_Data: 27586
     - m_Data: 27588
@@ -1376,6 +1370,7 @@ MonoBehaviour:
     - m_Data: 27616
     - m_Data: 27618
     - m_Data: 27620
+    - m_Data: 27622
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1409,7 +1404,6 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 27582
     - m_Data: 27584
     - m_Data: 27586
     - m_Data: 27588
@@ -1429,6 +1423,7 @@ MonoBehaviour:
     - m_Data: 27616
     - m_Data: 27618
     - m_Data: 27620
+    - m_Data: 27622
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 

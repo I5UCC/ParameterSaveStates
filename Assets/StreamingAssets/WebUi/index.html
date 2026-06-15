@@ -115,6 +115,26 @@
         </div>
       </div>
 
+      <!-- Backup / Restore -->
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+        <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Backup / Restore</h2>
+        <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">Export all profile data to a zip archive, or import zip archive to merge and overwrite existing files.</p>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <button id="exportProfilesBtn" class="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 dark:focus:ring-slate-400">
+            Export Profiles Zip
+          </button>
+          <input
+            id="importProfilesInput"
+            type="file"
+            accept=".zip,application/zip"
+            class="min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-2 file:py-1 file:text-xs file:font-semibold file:text-slate-900 hover:file:bg-slate-300 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-slate-700 dark:file:text-slate-100 dark:hover:file:bg-slate-600"
+          />
+          <button id="importProfilesBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60">
+            Import Profiles Zip
+          </button>
+        </div>
+      </div>
+
       <!-- Apply Profile Filters -->
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
         <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Apply Profile Filters</h2>
@@ -245,6 +265,9 @@
     const saveExcludedParametersBtn = document.getElementById("saveExcludedParametersBtn");
     const saveAvatarFiltersBtn = document.getElementById("saveAvatarFiltersBtn");
     const saveAutoSyncSettingsBtn = document.getElementById("saveAutoSyncSettingsBtn");
+    const exportProfilesBtn = document.getElementById("exportProfilesBtn");
+    const importProfilesInput = document.getElementById("importProfilesInput");
+    const importProfilesBtn = document.getElementById("importProfilesBtn");
     const themeToggle = document.getElementById("themToggle");
     const appVersionEl = document.getElementById("appVersion");
 
@@ -795,6 +818,84 @@
       }
     }
 
+    async function exportProfilesArchive() {
+      const originalText = exportProfilesBtn.textContent;
+      exportProfilesBtn.disabled = true;
+      exportProfilesBtn.textContent = "Exporting...";
+      try {
+        const response = await fetch("/api/profiles/export", { cache: "no-store" });
+        if (!response.ok) {
+          let errorMessage = "Export failed";
+          try {
+            const payload = await response.json();
+            errorMessage = payload.error || errorMessage;
+          } catch (_) {}
+          throw new Error(errorMessage);
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = URL.createObjectURL(blob);
+        const downloadLink = document.createElement("a");
+        const contentDisposition = response.headers.get("content-disposition") || "";
+        const match = /filename="?([^";]+)"?/i.exec(contentDisposition);
+        const fileName = match && match[1] ? match[1] : "profiles-export.zip";
+
+        downloadLink.href = downloadUrl;
+        downloadLink.download = fileName;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        downloadLink.remove();
+        URL.revokeObjectURL(downloadUrl);
+
+        setStatus("Profiles export ready.", false);
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        exportProfilesBtn.disabled = false;
+        exportProfilesBtn.textContent = originalText;
+      }
+    }
+
+    async function importProfilesArchive() {
+      const file = importProfilesInput.files && importProfilesInput.files[0];
+      if (!file) {
+        setStatus("Select a zip file to import.", true);
+        return;
+      }
+
+      const originalText = importProfilesBtn.textContent;
+      importProfilesBtn.disabled = true;
+      importProfilesBtn.textContent = "Importing...";
+
+      try {
+        const response = await fetch("/api/profiles/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/zip" },
+          body: await file.arrayBuffer()
+        });
+
+        const payload = await response.json();
+        if (!payload.ok) {
+          throw new Error(payload.error || "Import failed");
+        }
+
+        const importedFiles = payload.data && typeof payload.data.importedFiles === "number"
+          ? payload.data.importedFiles
+          : 0;
+
+        importProfilesInput.value = "";
+        setStatus(`Import complete: ${importedFiles} file(s).`, false);
+        await loadStatus();
+        await loadCopySourceAvatars(true);
+        await populateSettingsAvatarSelectors({ preferCurrentAvatar: false });
+      } catch (error) {
+        setStatus(error.message, true);
+      } finally {
+        importProfilesBtn.disabled = false;
+        importProfilesBtn.textContent = originalText;
+      }
+    }
+
     // ── Event listeners ──────────────────────────────────────────────────────────
     refreshBtn.addEventListener("click", loadStatus);
 
@@ -837,6 +938,15 @@
       confirmAction(
         "Delete all profiles for the selected avatar? This cannot be undone.",
         () => runProfileAction("/api/profiles/delete-avatar-folder", { avatarId }, deleteAvatarFolderBtn)
+      );
+    });
+
+    exportProfilesBtn.addEventListener("click", exportProfilesArchive);
+
+    importProfilesBtn.addEventListener("click", () => {
+      confirmAction(
+        "Import archive and overwrite matching profile files?",
+        () => { importProfilesArchive(); }
       );
     });
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -9,6 +10,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using PimDeWitte.UnityMainThreadDispatcher;
 using UnityEngine;
+using CompressionLevel = System.IO.Compression.CompressionLevel;
 
 public sealed class WebUiService : IDisposable
 {
@@ -338,6 +340,21 @@ public sealed class WebUiService : IDisposable
                 var body = ReadJsonBody(request);
                 var avatarId = body.Value<string>("avatarId");
                 WriteOk(context.Response, RunOnMainThread(() => DeleteAvatarFolder(avatarId)));
+                return;
+            }
+
+            if (method == "GET" && path.Equals("/api/profiles/export", StringComparison.OrdinalIgnoreCase))
+            {
+                var archive = RunOnMainThread(ExportProfilesArchive);
+                var fileName = $"profiles-export-{DateTime.UtcNow:yyyyMMdd-HHmmss}.zip";
+                WriteFile(context.Response, archive, fileName, "application/zip", 200);
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/profiles/import", StringComparison.OrdinalIgnoreCase))
+            {
+                var archiveBytes = ReadBinaryBody(request);
+                WriteOk(context.Response, RunOnMainThread(() => ImportProfilesArchive(archiveBytes)));
                 return;
             }
 
@@ -704,6 +721,126 @@ public sealed class WebUiService : IDisposable
         };
     }
 
+    private byte[] ExportProfilesArchive()
+    {
+        var profilesRootPath = Path.Combine(Application.persistentDataPath, AppConstants.ProfilesRootFolderName);
+        if (!Directory.Exists(profilesRootPath))
+        {
+            throw new InvalidOperationException("Profiles folder not found");
+        }
+
+        var files = Directory.GetFiles(profilesRootPath, "*", SearchOption.AllDirectories);
+        if (files.Length == 0)
+        {
+            throw new InvalidOperationException("Profiles folder is empty");
+        }
+
+        using var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, true))
+        {
+            foreach (var filePath in files)
+            {
+                var relativePath = GetRelativePath(profilesRootPath, filePath)
+                    .Replace(Path.DirectorySeparatorChar, '/');
+                archive.CreateEntryFromFile(filePath, relativePath, CompressionLevel.Optimal);
+            }
+        }
+
+        return stream.ToArray();
+    }
+
+    private object ImportProfilesArchive(byte[] archiveBytes)
+    {
+        if (archiveBytes == null || archiveBytes.Length == 0)
+        {
+            throw new InvalidOperationException("Archive body is empty");
+        }
+
+        var profilesRootPath = Path.Combine(Application.persistentDataPath, AppConstants.ProfilesRootFolderName);
+        if (!Directory.Exists(profilesRootPath))
+        {
+            Directory.CreateDirectory(profilesRootPath);
+        }
+
+        var tempRoot = Path.Combine(Application.temporaryCachePath, $"profiles-import-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            using (var stream = new MemoryStream(archiveBytes, false))
+            using (var archive = new ZipArchive(stream, ZipArchiveMode.Read, false))
+            {
+                if (archive.Entries.Count == 0)
+                {
+                    throw new InvalidOperationException("Archive has no files");
+                }
+
+                foreach (var entry in archive.Entries)
+                {
+                    if (string.IsNullOrEmpty(entry.Name))
+                    {
+                        continue;
+                    }
+
+                    var normalizedEntryPath = entry.FullName.Replace('\\', '/');
+                    var destinationPath = Path.GetFullPath(Path.Combine(tempRoot, normalizedEntryPath));
+                    if (!destinationPath.StartsWith(tempRoot, StringComparison.OrdinalIgnoreCase))
+                    {
+                        throw new InvalidOperationException("Archive contains invalid file path");
+                    }
+
+                    var destinationDir = Path.GetDirectoryName(destinationPath);
+                    if (!string.IsNullOrEmpty(destinationDir) && !Directory.Exists(destinationDir))
+                    {
+                        Directory.CreateDirectory(destinationDir);
+                    }
+
+                    using var sourceStream = entry.Open();
+                    using var destinationStream = File.Create(destinationPath);
+                    sourceStream.CopyTo(destinationStream);
+                }
+            }
+
+            var extractedFiles = Directory.GetFiles(tempRoot, "*", SearchOption.AllDirectories);
+            foreach (var sourcePath in extractedFiles)
+            {
+                var relativePath = GetRelativePath(tempRoot, sourcePath);
+                var targetPath = Path.Combine(profilesRootPath, relativePath);
+                var targetDir = Path.GetDirectoryName(targetPath);
+                if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                }
+
+                File.Copy(sourcePath, targetPath, true);
+            }
+
+            NotifyStateChanged();
+            return new
+            {
+                importedFiles = extractedFiles.Length
+            };
+        }
+        catch (InvalidDataException)
+        {
+            throw new InvalidOperationException("Invalid zip archive");
+        }
+        finally
+        {
+            try
+            {
+                if (Directory.Exists(tempRoot))
+                {
+                    Directory.Delete(tempRoot, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Failed to clean temporary import folder: {ex.Message}");
+            }
+        }
+    }
+
     private string LoadTheme()
     {
         var settingsPath = GetWebUiSettingsFilePath();
@@ -824,6 +961,32 @@ public sealed class WebUiService : IDisposable
         return JObject.Parse(body);
     }
 
+    private static byte[] ReadBinaryBody(HttpListenerRequest request)
+    {
+        if (!request.HasEntityBody)
+        {
+            return Array.Empty<byte>();
+        }
+
+        using var stream = new MemoryStream();
+        request.InputStream.CopyTo(stream);
+        return stream.ToArray();
+    }
+
+    private static string GetRelativePath(string rootPath, string fullPath)
+    {
+        var normalizedRoot = Path.GetFullPath(rootPath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        var normalizedFull = Path.GetFullPath(fullPath);
+        if (!normalizedFull.StartsWith(normalizedRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Path is outside expected root");
+        }
+
+        return normalizedFull.Substring(normalizedRoot.Length);
+    }
+
     private void WriteOk(HttpListenerResponse response, object data)
     {
         WriteJson(response, new ApiResponse
@@ -846,6 +1009,12 @@ public sealed class WebUiService : IDisposable
         response.ContentType = contentType;
         response.ContentLength64 = bytes.Length;
         response.OutputStream.Write(bytes, 0, bytes.Length);
+    }
+
+    private static void WriteFile(HttpListenerResponse response, byte[] bytes, string fileName, string contentType, int statusCode)
+    {
+        response.Headers["Content-Disposition"] = $"attachment; filename=\"{fileName}\"";
+        WriteBytes(response, bytes, contentType, statusCode);
     }
 
     private const string FallbackIndexHtml = @"<!doctype html>
