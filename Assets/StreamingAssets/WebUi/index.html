@@ -118,19 +118,19 @@
       <!-- Backup / Restore -->
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
         <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Backup / Restore</h2>
-        <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">Export all profile data to a zip archive, or import zip archive to merge and overwrite existing files.</p>
+        <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">Export all saved profiles and settings (profile filters, auto sync and fixed parameters, global and per avatar, plus the theme) to a zip archive. Importing a zip restores them and overwrites any existing files with the same name; other existing files are kept.</p>
         <div class="mt-3 flex flex-wrap items-center gap-3">
-          <button id="exportProfilesBtn" class="rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 dark:focus:ring-slate-400">
-            Export Profiles Zip
+          <button id="exportProfilesBtn" class="whitespace-nowrap rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 dark:focus:ring-slate-400">
+            Export Backup Zip
           </button>
           <input
             id="importProfilesInput"
             type="file"
             accept=".zip,application/zip"
-            class="min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-2 file:py-1 file:text-xs file:font-semibold file:text-slate-900 hover:file:bg-slate-300 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-slate-700 dark:file:text-slate-100 dark:hover:file:bg-slate-600"
+            class="min-w-[220px] flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 file:mr-3 file:rounded-md file:border-0 file:bg-slate-200 file:px-2 file:py-1 file:text-xs file:font-semibold file:text-slate-900 hover:file:bg-slate-300 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-slate-700 dark:file:text-slate-100 dark:hover:file:bg-slate-600"
           />
-          <button id="importProfilesBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60">
-            Import Profiles Zip
+          <button id="importProfilesBtn" class="whitespace-nowrap rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-60">
+            Import Backup Zip
           </button>
         </div>
       </div>
@@ -233,6 +233,56 @@
         </div>
       </div>
 
+      <!-- Fixed Parameters -->
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+        <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Fixed Parameters</h2>
+        <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">Parameters set to a fixed value whenever you switch to an avatar. Applied after auto sync, so a fixed value wins over a synced one. Not sure which value is needed? Add the names (value optional), then use “Fill values from profile” to copy the values and types from a saved profile of any avatar. Review the list, then save.</p>
+
+        <!-- Global fixed parameters -->
+        <div class="mt-3">
+          <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Global Fixed Parameters</p>
+          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Set for every avatar.</p>
+          <div class="mt-2 flex flex-col gap-2">
+            <div id="globalFixedParametersEditor"></div>
+            <div class="flex justify-end">
+              <button id="saveGlobalFixedBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
+                Save Global Fixed Parameters
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Per-avatar fixed parameters -->
+        <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+          <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Per-Avatar Fixed Parameters</p>
+          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Set for the selected avatar only. Overrides a global entry with the same name.</p>
+          <div class="mt-2 flex flex-col gap-2">
+            <div id="fixedDropdown" class="relative">
+              <button
+                id="fixedTrigger"
+                type="button"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              >Select avatar...</button>
+              <div id="fixedPanel" class="absolute z-30 mt-1 hidden w-full rounded-lg border border-slate-300 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-950">
+                <input
+                  id="fixedSearch"
+                  type="text"
+                  placeholder="Search avatars..."
+                  class="mb-2 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                />
+                <div id="fixedOptions" class="max-h-56 overflow-y-auto"></div>
+              </div>
+            </div>
+            <div id="avatarFixedParametersEditor"></div>
+            <div class="flex justify-end">
+              <button id="saveAvatarFixedBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
+                Save Avatar Fixed Parameters
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -242,6 +292,8 @@
       constructor(rootEl) {
         this.rootEl = rootEl;
         this.names = [];
+        this.dirty = false;      // true while there are unsaved local edits
+        this.loadedKey = null;   // what the current content was loaded for (e.g. an avatar id)
         rootEl.className = "flex flex-col gap-2";
 
         const inputRow = document.createElement("div");
@@ -289,12 +341,28 @@
           if (!name) return;
           if (this.names.some((existing) => existing.toLowerCase() === name.toLowerCase())) return;
           this.names.push(name);
+          this.dirty = true;
         });
         this.render();
       }
 
-      remove(name) {
-        this.names = this.names.filter((existing) => existing !== name);
+      rename(index, input) {
+        const oldName = this.names[index];
+        const newName = input.value.trim();
+        if (!newName || newName === oldName) { input.value = oldName; return; } // use × to delete
+        if (this.names.some((existing, i) => i !== index && existing.toLowerCase() === newName.toLowerCase())) {
+          setStatus(`"${newName}" is already in the list.`, true);
+          input.value = oldName;
+          return;
+        }
+        this.names[index] = newName;
+        this.dirty = true;
+        input.value = newName;
+      }
+
+      remove(index) {
+        this.names.splice(index, 1);
+        this.dirty = true;
         this.render();
       }
 
@@ -308,6 +376,23 @@
         this.render();
       }
 
+      // Loads saved data. Skipped (returns false) if there are unsaved edits for the same key,
+      // so background refreshes never wipe what the user is typing.
+      load(key, names) {
+        if (this.dirty && (this.loadedKey === null || this.loadedKey === key)) {
+          this.loadedKey = key;
+          return false;
+        }
+        this.loadedKey = key;
+        this.dirty = false;
+        this.setNames(names);
+        return true;
+      }
+
+      markSaved() {
+        this.dirty = false;
+      }
+
       render() {
         this.listEl.innerHTML = "";
         if (!this.names.length) {
@@ -318,23 +403,415 @@
           return;
         }
 
-        this.names.forEach((name) => {
+        this.names.forEach((name, index) => {
           const row = document.createElement("div");
-          row.className = "flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-1.5 last:border-b-0 dark:border-slate-800";
+          row.className = "flex items-center justify-between gap-2 border-b border-slate-200 px-2 py-1 last:border-b-0 dark:border-slate-800";
 
-          const label = document.createElement("span");
-          label.className = "min-w-0 flex-1 truncate text-sm text-slate-900 dark:text-slate-100";
-          label.textContent = name;
-          label.title = name;
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = name;
+          input.title = "Click to edit";
+          input.className = "min-w-0 flex-1 rounded border border-transparent bg-transparent px-1.5 py-0.5 text-sm text-slate-900 hover:border-slate-300 focus:border-sky-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-sky-500 dark:text-slate-100 dark:hover:border-slate-700 dark:focus:bg-slate-900";
+          input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") { event.preventDefault(); input.blur(); }
+            else if (event.key === "Escape") { input.value = this.names[index]; input.blur(); }
+          });
+          input.addEventListener("change", () => this.rename(index, input));
 
           const removeBtn = document.createElement("button");
           removeBtn.type = "button";
           removeBtn.textContent = "×";
           removeBtn.title = "Remove";
           removeBtn.className = "rounded px-2 text-lg leading-none text-slate-500 transition hover:bg-red-100 hover:text-red-600 focus:outline-none dark:text-slate-400 dark:hover:bg-red-900/40 dark:hover:text-red-400";
-          removeBtn.addEventListener("click", () => this.remove(name));
+          removeBtn.addEventListener("click", () => this.remove(index));
 
-          row.append(label, removeBtn);
+          row.append(input, removeBtn);
+          this.listEl.appendChild(row);
+        });
+      }
+    }
+
+    // ── Fixed parameter editor (name + type + value) ──────────────────────────
+    class FixedParameterEditor {
+      static TYPE_LABELS = { f: "Float", i: "Int", T: "Bool" };
+
+      // options.withAvatarSelect: show an avatar dropdown to choose which avatar's profiles to fill from.
+      // Without it, call setSourceAvatar(avatarId) to choose the avatar.
+      constructor(rootEl, options = {}) {
+        this.rootEl = rootEl;
+        this.items = [];
+        this.dirty = false;      // true while there are unsaved local edits
+        this.loadedKey = null;   // what the current content was loaded for (e.g. an avatar id)
+        rootEl.className = "flex flex-col gap-2";
+
+        const fieldClass = "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
+
+        const inputRow = document.createElement("div");
+        inputRow.className = "flex flex-wrap gap-2";
+
+        this.nameEl = document.createElement("input");
+        this.nameEl.type = "text";
+        this.nameEl.placeholder = "Parameter name (e.g. AvatarLimbScaling_Arms/AvatarLimbScaling_Legs)";
+        this.nameEl.className = `${fieldClass} min-w-[10rem] flex-1`;
+
+        this.typeEl = document.createElement("select");
+        this.typeEl.className = fieldClass;
+        Object.entries(FixedParameterEditor.TYPE_LABELS).forEach(([value, label]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          this.typeEl.appendChild(option);
+        });
+
+        this.valueEl = document.createElement("input");
+        this.valueEl.type = "text";
+        this.valueEl.placeholder = "Value";
+        this.valueEl.className = `${fieldClass} w-28`;
+
+        this.boolEl = document.createElement("select");
+        this.boolEl.className = `${fieldClass} hidden w-28`;
+        ["True", "False"].forEach((label) => {
+          const option = document.createElement("option");
+          option.value = label;
+          option.textContent = label;
+          this.boolEl.appendChild(option);
+        });
+
+        this.typeEl.addEventListener("change", () => {
+          const isBool = this.typeEl.value === "T";
+          this.boolEl.classList.toggle("hidden", !isBool);
+          this.valueEl.classList.toggle("hidden", isBool);
+          this.valueEl.placeholder = this.typeEl.value === "i" ? "e.g. 1" : "e.g. 0.5";
+        });
+        this.typeEl.dispatchEvent(new Event("change"));
+
+        [this.nameEl, this.valueEl].forEach((el) => el.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") { event.preventDefault(); this.commitPending(); }
+        }));
+
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.textContent = "Add";
+        addBtn.className = "rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700";
+        addBtn.addEventListener("click", () => { this.commitPending(); this.nameEl.focus(); });
+
+        inputRow.append(this.nameEl, this.typeEl, this.valueEl, this.boolEl, addBtn);
+
+        this.listEl = document.createElement("div");
+        this.listEl.className = "max-h-56 overflow-y-auto rounded-lg border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950";
+
+        rootEl.append(inputRow, this.buildFillRow(fieldClass, options), this.listEl);
+        this.render();
+      }
+
+      buildFillRow(fieldClass, options) {
+        const row = document.createElement("div");
+        row.className = "flex flex-wrap items-center gap-2";
+
+        const label = document.createElement("span");
+        label.className = "text-xs text-slate-500 dark:text-slate-400";
+        label.textContent = "Fill values from profile:";
+        row.appendChild(label);
+
+        this.sourceAvatarId = "";
+        if (options.withAvatarSelect) {
+          this.avatarSelectEl = document.createElement("select");
+          this.avatarSelectEl.className = `${fieldClass} min-w-[10rem] max-w-xs flex-1`;
+          this.avatarSelectEl.addEventListener("change", () => this.setSourceAvatar(this.avatarSelectEl.value));
+          row.appendChild(this.avatarSelectEl);
+        }
+
+        this.profileSelectEl = document.createElement("select");
+        this.profileSelectEl.className = `${fieldClass} min-w-[10rem] flex-1`;
+        row.appendChild(this.profileSelectEl);
+
+        this.fillBtn = document.createElement("button");
+        this.fillBtn.type = "button";
+        this.fillBtn.textContent = "Fill values";
+        this.fillBtn.className = "rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700";
+        this.fillBtn.addEventListener("click", () => this.fillFromProfile());
+        row.appendChild(this.fillBtn);
+
+        this.renderProfileOptions([]);
+        return row;
+      }
+
+      renderProfileOptions(profiles) {
+        this.profileSelectEl.innerHTML = "";
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = profiles.length ? "Select profile..." : "No profiles";
+        this.profileSelectEl.appendChild(placeholder);
+        profiles.forEach((name) => {
+          const option = document.createElement("option");
+          option.value = name;
+          option.textContent = name;
+          this.profileSelectEl.appendChild(option);
+        });
+        this.fillBtn.disabled = profiles.length === 0;
+      }
+
+      // Only used with options.withAvatarSelect. options: [{ avatarId, label }]
+      setAvatarOptions(options, preferredAvatarId) {
+        if (!this.avatarSelectEl) return;
+        const previous = this.avatarSelectEl.value;
+        this.avatarSelectEl.innerHTML = "";
+        options.forEach((opt) => {
+          const option = document.createElement("option");
+          option.value = opt.avatarId;
+          option.textContent = opt.label;
+          this.avatarSelectEl.appendChild(option);
+        });
+        const wanted = [preferredAvatarId, previous].find((id) => id && options.some((opt) => opt.avatarId === id))
+          || (options.length ? options[0].avatarId : "");
+        this.avatarSelectEl.value = wanted;
+        this.setSourceAvatar(wanted);
+      }
+
+      async setSourceAvatar(avatarId) {
+        const same = (avatarId || "") === this.sourceAvatarId;
+        const previousProfile = same ? this.profileSelectEl.value : "";
+        this.sourceAvatarId = avatarId || "";
+        if (!same) this.renderProfileOptions([]);
+        if (!this.sourceAvatarId) return;
+        try {
+          const data = await api(`/api/avatar-profiles?avatarId=${encodeURIComponent(this.sourceAvatarId)}`);
+          if (data.avatarId !== this.sourceAvatarId) return; // a newer selection superseded this request
+          const profiles = data.profiles || [];
+          this.renderProfileOptions(profiles);
+          if (previousProfile && profiles.includes(previousProfile)) this.profileSelectEl.value = previousProfile;
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      }
+
+      // Overrides type and value of every listed parameter that exists in the chosen profile.
+      async fillFromProfile() {
+        if (!this.sourceAvatarId) { setStatus("Select an avatar first.", true); return; }
+        const profileName = this.profileSelectEl.value;
+        if (!profileName) { setStatus("Select a profile first.", true); return; }
+        if (!this.commitPending()) return;
+        if (!this.items.length) {
+          setStatus("Add parameter names first, then fill their values from a profile.", true);
+          return;
+        }
+
+        this.fillBtn.disabled = true;
+        try {
+          const data = await api("/api/fixed-parameters/from-profile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              avatarId: this.sourceAvatarId,
+              profileName,
+              names: this.items.map((item) => item.name)
+            })
+          });
+          const found = new Map((data.parameters || []).map((p) => [p.name.toLowerCase(), p]));
+          const missing = [];
+          let filled = 0;
+          this.items = this.items.map((item) => {
+            const match = found.get(item.name.toLowerCase());
+            if (!match) { missing.push(item.name); return item; }
+            filled++;
+            return { name: item.name, type: match.type, value: match.value };
+          });
+          if (filled > 0) this.dirty = true;
+          this.render();
+          setStatus(
+            `Filled ${filled} of ${this.items.length} value(s) from "${profileName}". Not saved yet.`
+              + (missing.length ? ` Not in profile: ${missing.join(", ")}.` : ""),
+            filled === 0
+          );
+        } catch (error) {
+          setStatus(error.message, true);
+        } finally {
+          this.fillBtn.disabled = this.profileSelectEl.options.length <= 1;
+        }
+      }
+
+      // Returns true if an entry was added (or the form was empty), false if the input was invalid.
+      commitPending() {
+        const name = this.nameEl.value.trim();
+        if (!name) return true;
+
+        const type = this.typeEl.value;
+        const value = (type === "T" ? this.boolEl.value : this.valueEl.value).trim();
+        // An empty value is allowed here (to be filled from a profile later); it must be set before saving.
+        const error = value === "" ? null : this.validateItem({ type, value });
+        if (error) {
+          setStatus(`Value "${value}" ${error}.`, true);
+          return false;
+        }
+
+        this.items = this.items.filter((item) => item.name.toLowerCase() !== name.toLowerCase());
+        this.items.push({ name, type, value });
+        this.dirty = true;
+        this.nameEl.value = "";
+        this.valueEl.value = "";
+        this.render();
+        return true;
+      }
+
+      // Returns an error phrase, or null if the item's value is valid for its type.
+      validateItem(item) {
+        const value = String(item.value ?? "").trim();
+        if (item.type === "T") return /^(true|false)$/i.test(value) ? null : "must be True or False";
+        if (value === "") return "has no value set";
+        if (item.type === "i") return /^[+-]?\d+$/.test(value) ? null : "must be a whole number";
+        return /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(value) ? null : "must be a number";
+      }
+
+      rename(item, input) {
+        const newName = input.value.trim();
+        if (!newName || newName === item.name) { input.value = item.name; return; } // use × to delete
+        if (this.items.some((other) => other !== item && other.name.toLowerCase() === newName.toLowerCase())) {
+          setStatus(`"${newName}" is already in the list.`, true);
+          input.value = item.name;
+          return;
+        }
+        item.name = newName;
+        this.dirty = true;
+        input.value = newName;
+      }
+
+      changeType(item, newType) {
+        const oldType = item.type;
+        if (newType === oldType) return;
+        item.type = newType;
+        if (newType === "T") item.value = /^false$/i.test(String(item.value).trim()) ? "False" : "True";
+        else if (oldType === "T") item.value = "";
+        this.dirty = true;
+        this.render();
+      }
+
+      remove(item) {
+        this.items = this.items.filter((other) => other !== item);
+        this.dirty = true;
+        this.render();
+      }
+
+      // Returns the entries (including a pending, valid one), or null if something is invalid.
+      getItems() {
+        if (!this.commitPending()) return null;
+        for (const item of this.items) {
+          const error = this.validateItem(item);
+          if (error) {
+            setStatus(
+              `Fixed parameter "${item.name}" ${error}.`
+                + (error === "has no value set" ? ` Type one, or use "Fill values from profile".` : ""),
+              true
+            );
+            return null;
+          }
+        }
+        return this.items.map((item) => ({ ...item, value: String(item.value).trim() }));
+      }
+
+      setItems(items) {
+        this.items = (Array.isArray(items) ? items : []).map((item) => ({ ...item }));
+        this.render();
+      }
+
+      // Loads saved data. Skipped (returns false) if there are unsaved edits for the same key,
+      // so background refreshes never wipe what the user is typing.
+      load(key, items) {
+        if (this.dirty && (this.loadedKey === null || this.loadedKey === key)) {
+          this.loadedKey = key;
+          return false;
+        }
+        this.loadedKey = key;
+        this.dirty = false;
+        this.setItems(items);
+        return true;
+      }
+
+      markSaved() {
+        this.dirty = false;
+      }
+
+      render() {
+        this.listEl.innerHTML = "";
+        if (!this.items.length) {
+          const empty = document.createElement("div");
+          empty.className = "px-3 py-2 text-sm text-slate-500 dark:text-slate-400";
+          empty.textContent = "No fixed parameters added.";
+          this.listEl.appendChild(empty);
+          return;
+        }
+
+        const cellClass = "rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
+        const BAD = ["border-red-500", "dark:border-red-500"];
+        const UNSET = ["border-amber-500", "dark:border-amber-500"];
+
+        this.items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "flex flex-wrap items-center gap-2 border-b border-slate-200 px-2 py-1.5 last:border-b-0 dark:border-slate-800";
+
+          const nameInput = document.createElement("input");
+          nameInput.type = "text";
+          nameInput.value = item.name;
+          nameInput.title = "Click to edit the name";
+          nameInput.className = `${cellClass} min-w-[8rem] flex-1`;
+          nameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") { event.preventDefault(); nameInput.blur(); }
+            else if (event.key === "Escape") { nameInput.value = item.name; nameInput.blur(); }
+          });
+          nameInput.addEventListener("change", () => this.rename(item, nameInput));
+
+          const typeSelect = document.createElement("select");
+          typeSelect.className = cellClass;
+          Object.entries(FixedParameterEditor.TYPE_LABELS).forEach(([value, label]) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = label;
+            typeSelect.appendChild(option);
+          });
+          typeSelect.value = item.type;
+          typeSelect.addEventListener("change", () => this.changeType(item, typeSelect.value));
+
+          let valueControl;
+          if (item.type === "T") {
+            valueControl = document.createElement("select");
+            valueControl.className = `${cellClass} w-28`;
+            ["True", "False"].forEach((label) => {
+              const option = document.createElement("option");
+              option.value = label;
+              option.textContent = label;
+              valueControl.appendChild(option);
+            });
+            valueControl.value = /^false$/i.test(String(item.value).trim()) ? "False" : "True";
+            valueControl.addEventListener("change", () => { item.value = valueControl.value; this.dirty = true; });
+          } else {
+            valueControl = document.createElement("input");
+            valueControl.type = "text";
+            valueControl.value = item.value;
+            valueControl.placeholder = "not set";
+            valueControl.title = "Click to edit the value";
+            valueControl.className = `${cellClass} w-28`;
+            const refreshState = () => {
+              const error = this.validateItem(item);
+              const unset = String(item.value).trim() === "";
+              valueControl.classList.remove(...BAD, ...UNSET);
+              if (error && unset) valueControl.classList.add(...UNSET);
+              else if (error) valueControl.classList.add(...BAD);
+              valueControl.title = error ? `Value ${error}` : "Click to edit the value";
+            };
+            valueControl.addEventListener("input", () => { item.value = valueControl.value; this.dirty = true; refreshState(); });
+            valueControl.addEventListener("keydown", (event) => {
+              if (event.key === "Enter") { event.preventDefault(); valueControl.blur(); }
+            });
+            refreshState();
+          }
+
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.textContent = "×";
+          removeBtn.title = "Remove";
+          removeBtn.className = "rounded px-2 text-lg leading-none text-slate-500 transition hover:bg-red-100 hover:text-red-600 focus:outline-none dark:text-slate-400 dark:hover:bg-red-900/40 dark:hover:text-red-400";
+          removeBtn.addEventListener("click", () => this.remove(item));
+
+          row.append(nameInput, typeSelect, valueControl, removeBtn);
           this.listEl.appendChild(row);
         });
       }
@@ -374,6 +851,15 @@
     const saveExcludedParametersBtn = document.getElementById("saveExcludedParametersBtn");
     const saveAvatarFiltersBtn = document.getElementById("saveAvatarFiltersBtn");
     const saveAutoSyncSettingsBtn = document.getElementById("saveAutoSyncSettingsBtn");
+    const fixedDropdown = document.getElementById("fixedDropdown");
+    const fixedTrigger = document.getElementById("fixedTrigger");
+    const fixedPanel = document.getElementById("fixedPanel");
+    const fixedSearch = document.getElementById("fixedSearch");
+    const fixedOptionsEl = document.getElementById("fixedOptions");
+    const globalFixedEditor = new FixedParameterEditor(document.getElementById("globalFixedParametersEditor"), { withAvatarSelect: true });
+    const avatarFixedEditor = new FixedParameterEditor(document.getElementById("avatarFixedParametersEditor"));
+    const saveGlobalFixedBtn = document.getElementById("saveGlobalFixedBtn");
+    const saveAvatarFixedBtn = document.getElementById("saveAvatarFixedBtn");
     const exportProfilesBtn = document.getElementById("exportProfilesBtn");
     const importProfilesInput = document.getElementById("importProfilesInput");
     const importProfilesBtn = document.getElementById("importProfilesBtn");
@@ -493,6 +979,7 @@
     let selectedCopyFromAvatarId = "";
     let selectedAvatarFiltersId = "";
     let selectedAutoSyncAvatarId = "";
+    let selectedFixedAvatarId = "";
 
     class AvatarSearchDropdown {
       static instances = [];
@@ -665,6 +1152,19 @@
       }
     });
 
+    const fixedPicker = new AvatarSearchDropdown({
+      rootEl: fixedDropdown,
+      triggerEl: fixedTrigger,
+      panelEl: fixedPanel,
+      searchEl: fixedSearch,
+      optionsEl: fixedOptionsEl,
+      placeholder: "Select avatar...",
+      onSelected: (avatarId) => {
+        selectedFixedAvatarId = avatarId || "";
+        loadAvatarFixed(selectedFixedAvatarId);
+      }
+    });
+
     document.addEventListener("click", (event) => {
       const clickedInsideDropdown = AvatarSearchDropdown.instances
         .some((instance) => instance.rootEl.contains(event.target));
@@ -697,6 +1197,7 @@
           await populateSettingsAvatarSelectors({ preferCurrentAvatar: true });
           if (selectedAvatarFiltersId) loadAvatarFilters(selectedAvatarFiltersId);
           if (selectedAutoSyncAvatarId) loadAvatarAutoSync(selectedAutoSyncAvatarId);
+          if (selectedFixedAvatarId) loadAvatarFixed(selectedFixedAvatarId);
         }
 
         if (!data.connected || !data.currentAvatar) {
@@ -762,7 +1263,7 @@
       try {
         const data = await api("/api/profile-apply-filters");
         const names = Array.isArray(data.excludedParameterNames) ? data.excludedParameterNames : [];
-        excludedParameterNamesInput.setNames(names);
+        excludedParameterNamesInput.load("global", names);
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -785,6 +1286,13 @@
         settingsAvatarOptions,
         preferredSettingsAvatarId || selectedAutoSyncAvatarId || currentAvatarId
       );
+
+      fixedPicker.setOptions(
+        settingsAvatarOptions,
+        preferredSettingsAvatarId || selectedFixedAvatarId || currentAvatarId
+      );
+
+      globalFixedEditor.setAvatarOptions(settingsAvatarOptions, preferredSettingsAvatarId);
     }
 
     async function buildAvatarOptions() {
@@ -813,10 +1321,11 @@
     // ── Per-avatar filters ────────────────────────────────────────────────────
 
     async function loadAvatarFilters(avatarId) {
-      if (!avatarId) { avatarFiltersParameterNamesInput.setNames([]); return; }
+      if (!avatarId) { avatarFiltersParameterNamesInput.load("", []); return; }
       try {
         const data = await api(`/api/avatar-profile-apply-filters?avatarId=${encodeURIComponent(avatarId)}`);
-        avatarFiltersParameterNamesInput.setNames(data.parameterNames || []);
+        if (avatarId !== selectedAvatarFiltersId) return;
+        avatarFiltersParameterNamesInput.load(avatarId, data.parameterNames || []);
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -827,7 +1336,7 @@
     async function loadGlobalAutoSync() {
       try {
         const data = await api("/api/parameter-auto-sync");
-        globalAutoSyncParameterNamesInput.setNames(data.parameterNames || []);
+        globalAutoSyncParameterNamesInput.load("global", data.parameterNames || []);
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -836,10 +1345,34 @@
     // ── Per-avatar auto sync ─────────────────────────────────────────────────
 
     async function loadAvatarAutoSync(avatarId) {
-      if (!avatarId) { autoSyncParameterNamesInput.setNames([]); return; }
+      if (!avatarId) { autoSyncParameterNamesInput.load("", []); return; }
       try {
         const data = await api(`/api/avatar-parameter-auto-sync?avatarId=${encodeURIComponent(avatarId)}`);
-        autoSyncParameterNamesInput.setNames(data.parameterNames || []);
+        if (avatarId !== selectedAutoSyncAvatarId) return;
+        autoSyncParameterNamesInput.load(avatarId, data.parameterNames || []);
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    // ── Fixed parameters ─────────────────────────────────────────────────────
+
+    async function loadGlobalFixed() {
+      try {
+        const data = await api("/api/fixed-parameters");
+        globalFixedEditor.load("global", data.parameters || []);
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function loadAvatarFixed(avatarId) {
+      avatarFixedEditor.setSourceAvatar(avatarId);
+      if (!avatarId) { avatarFixedEditor.load("", []); return; }
+      try {
+        const data = await api(`/api/avatar-fixed-parameters?avatarId=${encodeURIComponent(avatarId)}`);
+        if (avatarId !== selectedFixedAvatarId) return; // user picked another avatar meanwhile
+        avatarFixedEditor.load(avatarId, data.parameters || []);
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -921,8 +1454,10 @@
         });
         await loadStatus();
         await loadCopySourceAvatars();
+        return true;
       } catch (error) {
         setStatus(error.message, true);
+        return false;
       } finally {
         if (button) {
           button.disabled = false;
@@ -960,7 +1495,7 @@
         downloadLink.remove();
         URL.revokeObjectURL(downloadUrl);
 
-        setStatus("Profiles export ready.", false);
+        setStatus("Backup export ready.", false);
       } catch (error) {
         setStatus(error.message, true);
       } finally {
@@ -998,8 +1533,18 @@
 
         importProfilesInput.value = "";
         setStatus(`Import complete: ${importedFiles} file(s).`, false);
+
+        // The files on disk were replaced, so discard unsaved edits and reload every settings list.
+        [
+          excludedParameterNamesInput, avatarFiltersParameterNamesInput,
+          globalAutoSyncParameterNamesInput, autoSyncParameterNamesInput,
+          globalFixedEditor, avatarFixedEditor
+        ].forEach((editor) => { editor.dirty = false; });
+
         await loadStatus();
         await loadCopySourceAvatars(true);
+        await Promise.all([loadExcludedParameterNames(), loadGlobalAutoSync(), loadGlobalFixed()]);
+        // Re-selecting the avatars in the pickers reloads the per-avatar lists.
         await populateSettingsAvatarSelectors({ preferCurrentAvatar: false });
       } catch (error) {
         setStatus(error.message, true);
@@ -1019,30 +1564,58 @@
 
     saveExcludedParametersBtn.addEventListener("click", async () => {
       const names = excludedParameterNamesInput.getNames();
-      await runProfileAction("/api/profile-apply-filters", { excludedParameterNames: names }, saveExcludedParametersBtn);
-      excludedParameterNamesInput.setNames(names.sort((a, b) => a.localeCompare(b)));
+      if (await runProfileAction("/api/profile-apply-filters", { excludedParameterNames: names }, saveExcludedParametersBtn)) {
+        excludedParameterNamesInput.markSaved();
+        excludedParameterNamesInput.setNames(names.sort((a, b) => a.localeCompare(b)));
+      }
     });
 
     saveAvatarFiltersBtn.addEventListener("click", async () => {
       const avatarId = selectedAvatarFiltersId;
       if (!avatarId) { setStatus("Select an avatar first.", true); return; }
       const parameterNames = avatarFiltersParameterNamesInput.getNames();
-      await runProfileAction("/api/avatar-profile-apply-filters", { avatarId, parameterNames }, saveAvatarFiltersBtn);
-      avatarFiltersParameterNamesInput.setNames(parameterNames.sort((a, b) => a.localeCompare(b)));
+      if (await runProfileAction("/api/avatar-profile-apply-filters", { avatarId, parameterNames }, saveAvatarFiltersBtn)) {
+        avatarFiltersParameterNamesInput.markSaved();
+        avatarFiltersParameterNamesInput.setNames(parameterNames.sort((a, b) => a.localeCompare(b)));
+      }
     });
 
     saveGlobalAutoSyncBtn.addEventListener("click", async () => {
       const parameterNames = globalAutoSyncParameterNamesInput.getNames();
-      await runProfileAction("/api/parameter-auto-sync", { parameterNames }, saveGlobalAutoSyncBtn);
-      globalAutoSyncParameterNamesInput.setNames(parameterNames.sort((a, b) => a.localeCompare(b)));
+      if (await runProfileAction("/api/parameter-auto-sync", { parameterNames }, saveGlobalAutoSyncBtn)) {
+        globalAutoSyncParameterNamesInput.markSaved();
+        globalAutoSyncParameterNamesInput.setNames(parameterNames.sort((a, b) => a.localeCompare(b)));
+      }
     });
 
     saveAutoSyncSettingsBtn.addEventListener("click", async () => {
       const avatarId = selectedAutoSyncAvatarId;
       if (!avatarId) { setStatus("Select an avatar first.", true); return; }
       const parameterNames = autoSyncParameterNamesInput.getNames();
-      await runProfileAction("/api/avatar-parameter-auto-sync", { avatarId, parameterNames }, saveAutoSyncSettingsBtn);
-      autoSyncParameterNamesInput.setNames(parameterNames.sort((a, b) => a.localeCompare(b)));
+      if (await runProfileAction("/api/avatar-parameter-auto-sync", { avatarId, parameterNames }, saveAutoSyncSettingsBtn)) {
+        autoSyncParameterNamesInput.markSaved();
+        autoSyncParameterNamesInput.setNames(parameterNames.sort((a, b) => a.localeCompare(b)));
+      }
+    });
+
+    saveGlobalFixedBtn.addEventListener("click", async () => {
+      const parameters = globalFixedEditor.getItems();
+      if (!parameters) return;
+      if (await runProfileAction("/api/fixed-parameters", { parameters }, saveGlobalFixedBtn)) {
+        globalFixedEditor.markSaved();
+        await loadGlobalFixed();
+      }
+    });
+
+    saveAvatarFixedBtn.addEventListener("click", async () => {
+      const avatarId = selectedFixedAvatarId;
+      if (!avatarId) { setStatus("Select an avatar first.", true); return; }
+      const parameters = avatarFixedEditor.getItems();
+      if (!parameters) return;
+      if (await runProfileAction("/api/avatar-fixed-parameters", { avatarId, parameters }, saveAvatarFixedBtn)) {
+        avatarFixedEditor.markSaved();
+        await loadAvatarFixed(avatarId);
+      }
     });
 
     copyFromAvatarBtn.addEventListener("click", () => {
@@ -1064,7 +1637,7 @@
 
     importProfilesBtn.addEventListener("click", () => {
       confirmAction(
-        "Import archive and overwrite matching profile files?",
+        "Import this backup? Profiles and settings (filters, auto sync, fixed parameters) with the same file name will be overwritten, and unsaved edits in the settings lists will be discarded.",
         () => { importProfilesArchive(); }
       );
     });
@@ -1073,10 +1646,12 @@
     loadCopySourceAvatars(true);
     loadExcludedParameterNames();
     loadGlobalAutoSync();
+    loadGlobalFixed();
     loadStatus().then(async () => {
       await populateSettingsAvatarSelectors({ preferCurrentAvatar: true });
       if (selectedAvatarFiltersId) loadAvatarFilters(selectedAvatarFiltersId);
       if (selectedAutoSyncAvatarId) loadAvatarAutoSync(selectedAutoSyncAvatarId);
+      if (selectedFixedAvatarId) loadAvatarFixed(selectedFixedAvatarId);
     });
   </script>
 </body>
