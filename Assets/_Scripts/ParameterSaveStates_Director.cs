@@ -465,35 +465,7 @@ public class ParameterSaveStates_Director : MonoBehaviour
         if (string.IsNullOrWhiteSpace(avatarId) || _oscService == null || _profileService == null)
             return;
 
-        var fixedParameters = _profileService.GetEffectiveFixedParameters(avatarId);
-        if (fixedParameters.Count == 0)
-            return;
-
-        var appliedCount = 0;
-        foreach (var entry in fixedParameters)
-        {
-            var address = entry.name.StartsWith("/", StringComparison.Ordinal)
-                ? entry.name
-                : "/avatar/parameters/" + entry.name;
-
-            switch (entry.type)
-            {
-                case "f":
-                    if (float.TryParse(entry.value, NumberStyles.Float, CultureInfo.InvariantCulture, out var floatValue))
-                    { _oscService.SendFloat(address, floatValue); appliedCount++; }
-                    break;
-                case "i":
-                    if (int.TryParse(entry.value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue))
-                    { _oscService.SendInt(address, intValue); appliedCount++; }
-                    break;
-                case "T":
-                    if (bool.TryParse(entry.value, out var boolValue))
-                    { _oscService.SendBool(address, boolValue); appliedCount++; }
-                    break;
-            }
-        }
-
-        Debug.Log($"Fixed parameters for avatar '{avatarId}': {appliedCount}/{fixedParameters.Count} sent.");
+        _profileService.ApplyFixedParameters(avatarId);
     }
 
     private void ApplyAutoSyncedParametersForAvatar(string avatarId)

@@ -176,6 +176,47 @@ public class ProfileService
         {
             Debug.Log($"ApplyProfile skipped {skippedCount} excluded parameter(s).");
         }
+
+        // Fixed parameters (global + avatar) are sent last, so they win over the profile's values.
+        ApplyFixedParameters(_loadedAvatarId);
+    }
+
+    // Sends the effective (global + per-avatar) fixed parameters for the avatar. Returns the number sent.
+    public int ApplyFixedParameters(string avatarId)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId) || _oscService == null)
+            return 0;
+
+        var fixedParameters = GetEffectiveFixedParameters(avatarId);
+        if (fixedParameters.Count == 0)
+            return 0;
+
+        var appliedCount = 0;
+        foreach (var entry in fixedParameters)
+        {
+            var address = entry.name.StartsWith("/", StringComparison.Ordinal)
+                ? entry.name
+                : "/avatar/parameters/" + entry.name;
+
+            switch (entry.type)
+            {
+                case "f":
+                    if (float.TryParse(entry.value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var floatValue))
+                    { _oscService.SendFloat(address, floatValue); appliedCount++; }
+                    break;
+                case "i":
+                    if (int.TryParse(entry.value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var intValue))
+                    { _oscService.SendInt(address, intValue); appliedCount++; }
+                    break;
+                case "T":
+                    if (bool.TryParse(entry.value, out var boolValue))
+                    { _oscService.SendBool(address, boolValue); appliedCount++; }
+                    break;
+            }
+        }
+
+        Debug.Log($"Fixed parameters for avatar '{avatarId}': {appliedCount}/{fixedParameters.Count} sent.");
+        return appliedCount;
     }
 
     public List<string> GetExcludedParameterNames()
