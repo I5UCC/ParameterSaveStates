@@ -978,7 +978,6 @@
     let lastStatus = null;
     let lastKnownCurrentAvatar = "";
     let lastKnownPreviousAvatar = "";
-    let statusLoadedOnce = false;
     let copyFromAvatarOptions = [];
     let settingsAvatarOptions = [];
     let selectedCopyFromAvatarId = "";
@@ -1187,9 +1186,6 @@
         const data = await api("/api/status");
         const avatarChanged = (data.currentAvatar || "") !== lastKnownCurrentAvatar
           || (data.previousAvatar || "") !== lastKnownPreviousAvatar;
-        // The first status load is just the page opening, not an avatar change: preselect nothing then.
-        const followAvatar = statusLoadedOnce;
-        statusLoadedOnce = true;
         lastStatus = data;
         lastKnownCurrentAvatar = data.currentAvatar || "";
         lastKnownPreviousAvatar = data.previousAvatar || "";
@@ -1200,9 +1196,11 @@
         renderProfiles(data.profiles || []);
         setStatus(data.connected ? "Ready" : "Waiting for VRChat to connect...", false);
 
+        // Runs on an avatar change and on the first load when VRChat is already connected
+        // (an avatar is then known), so the dropdowns follow the current avatar.
         if (avatarChanged) {
-          await loadCopySourceAvatars(followAvatar);
-          await populateSettingsAvatarSelectors({ preferCurrentAvatar: followAvatar });
+          await loadCopySourceAvatars(true);
+          await populateSettingsAvatarSelectors({ preferCurrentAvatar: true });
           if (selectedAvatarFiltersId) loadAvatarFilters(selectedAvatarFiltersId);
           if (selectedAutoSyncAvatarId) loadAvatarAutoSync(selectedAutoSyncAvatarId);
           if (selectedFixedAvatarId) loadAvatarFixed(selectedFixedAvatarId);
@@ -1653,11 +1651,13 @@
     });
 
     // ── Initial load ─────────────────────────────────────────────────────────────
-    loadCopySourceAvatars();
     loadExcludedParameterNames();
     loadGlobalAutoSync();
     loadGlobalFixed();
     loadStatus().then(async () => {
+      // If VRChat is connected, loadStatus has already preselected the current avatar; these calls
+      // fill the dropdowns in the not-connected case and otherwise keep the existing selection.
+      await loadCopySourceAvatars();
       await populateSettingsAvatarSelectors({ preferCurrentAvatar: false });
       if (selectedAvatarFiltersId) loadAvatarFilters(selectedAvatarFiltersId);
       if (selectedAutoSyncAvatarId) loadAvatarAutoSync(selectedAutoSyncAvatarId);
