@@ -463,7 +463,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
         if (string.IsNullOrWhiteSpace(avatarId) || _oscService == null || _profileService == null)
             return;
 
-        var parameterNames = _profileService.GetAvatarAutoSyncParameterNames(avatarId);
+        var parameterNames = _profileService.GetGlobalAutoSyncParameterNames();
+        parameterNames.AddRange(_profileService.GetAvatarAutoSyncParameterNames(avatarId));
         if (parameterNames.Count == 0)
             return;
 

@@ -386,6 +386,20 @@ public sealed class WebUiService : IDisposable
                 return;
             }
 
+            if (method == "GET" && path.Equals("/api/parameter-auto-sync", StringComparison.OrdinalIgnoreCase))
+            {
+                WriteOk(context.Response, RunOnMainThread(GetGlobalAutoSync));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/parameter-auto-sync", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var parameterNames = body["parameterNames"]?.ToObject<List<string>>() ?? new List<string>();
+                WriteOk(context.Response, RunOnMainThread(() => SaveGlobalAutoSync(parameterNames)));
+                return;
+            }
+
             if (method == "GET" && path.Equals("/api/avatar-parameter-auto-sync", StringComparison.OrdinalIgnoreCase))
             {
                 var avatarId = GetQueryParam(request, "avatarId");
@@ -488,6 +502,17 @@ public sealed class WebUiService : IDisposable
         {
             excludedParameterNames = savedNames
         };
+    }
+
+    private object GetGlobalAutoSync()
+    {
+        return new { parameterNames = _profileService.GetGlobalAutoSyncParameterNames() };
+    }
+
+    private object SaveGlobalAutoSync(List<string> parameterNames)
+    {
+        var saved = _profileService.SaveGlobalAutoSyncParameterNames(parameterNames ?? new List<string>());
+        return new { parameterNames = saved };
     }
 
     private object GetAvatarAutoSync(string avatarId)

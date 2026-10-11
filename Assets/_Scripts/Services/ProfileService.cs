@@ -624,6 +624,34 @@ public class ProfileService
         return true;
     }
 
+    // ── Global auto sync ────────────────────────────────────────────────────────
+
+    public List<string> GetGlobalAutoSyncParameterNames()
+    {
+        var filePath = GetGlobalAutoSyncFilePath();
+        if (!File.Exists(filePath)) return new List<string>();
+        try
+        {
+            var json = File.ReadAllText(filePath);
+            if (string.IsNullOrWhiteSpace(json)) return new List<string>();
+            var settings = JsonConvert.DeserializeObject<AvatarAutoSyncSettings>(json);
+            return NormalizeExcludedParameterNames(settings?.parameterNames ?? new List<string>());
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Failed to read global auto-sync settings: {ex.Message}");
+            return new List<string>();
+        }
+    }
+
+    public List<string> SaveGlobalAutoSyncParameterNames(IEnumerable<string> parameterNames)
+    {
+        var normalized = NormalizeExcludedParameterNames(parameterNames ?? Array.Empty<string>());
+        var settings = new AvatarAutoSyncSettings { parameterNames = normalized };
+        File.WriteAllText(GetGlobalAutoSyncFilePath(), JsonConvert.SerializeObject(settings, Formatting.Indented));
+        return normalized;
+    }
+
     // ── Per-avatar auto sync ────────────────────────────────────────────────────
 
     public List<string> GetAvatarAutoSyncParameterNames(string avatarId)
@@ -701,6 +729,14 @@ public class ProfileService
 
     private static string GetAvatarApplyProfileSettingsFilePath(string avatarId)
         => Path.Combine(GetProfilesRootPath(), avatarId, ApplyProfileSettingsFile);
+
+    private static string GetGlobalAutoSyncFilePath()
+    {
+        var profilesRootPath = GetProfilesRootPath();
+        if (!Directory.Exists(profilesRootPath))
+            Directory.CreateDirectory(profilesRootPath);
+        return Path.Combine(profilesRootPath, AutoSyncSettingsFile);
+    }
 
     private static string GetAvatarAutoSyncFilePath(string avatarId)
         => Path.Combine(GetProfilesRootPath(), avatarId, AutoSyncSettingsFile);

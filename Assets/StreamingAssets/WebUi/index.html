@@ -196,9 +196,32 @@
 
       <!-- Avatar Parameter Auto Sync -->
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-        <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Avatar Parameter Auto Sync</h2>
-        <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">When switching into the selected avatar, the listed parameter names are copied from the previous avatar's last known values.</p>
-        <div class="mt-3 flex flex-col gap-2">
+        <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Parameter Auto Sync</h2>
+
+        <!-- Global auto sync -->
+        <div class="mt-3">
+          <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Global Auto Sync</p>
+          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">When switching to any avatar, the listed parameter names are copied from the previous avatar's last known values. One name per line.</p>
+          <div class="mt-2 flex flex-col gap-2">
+            <textarea
+              id="globalAutoSyncParameterNamesInput"
+              rows="4"
+              placeholder="Enter Parameter Names"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            ></textarea>
+            <div class="flex justify-end">
+              <button id="saveGlobalAutoSyncBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
+                Save Global Auto Sync
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Per-avatar auto sync -->
+        <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+        <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Per-Avatar Auto Sync</p>
+        <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Applied in addition to global auto sync when switching into the selected avatar. One name per line.</p>
+        <div class="mt-2 flex flex-col gap-2">
           <div id="autoSyncDropdown" class="relative">
             <button
               id="autoSyncTrigger"
@@ -223,9 +246,10 @@
           ></textarea>
           <div class="flex justify-end">
             <button id="saveAutoSyncSettingsBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
-              Save Auto Sync
+              Save Avatar Auto Sync
             </button>
           </div>
+        </div>
         </div>
       </div>
 
@@ -257,6 +281,8 @@
     const autoSyncSearch = document.getElementById("autoSyncSearch");
     const autoSyncOptionsEl = document.getElementById("autoSyncOptions");
     const autoSyncParameterNamesInput = document.getElementById("autoSyncParameterNamesInput");
+    const globalAutoSyncParameterNamesInput = document.getElementById("globalAutoSyncParameterNamesInput");
+    const saveGlobalAutoSyncBtn = document.getElementById("saveGlobalAutoSyncBtn");
 
     const refreshBtn = document.getElementById("refreshBtn");
     const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -720,6 +746,17 @@
       }
     }
 
+    // ── Global auto sync ─────────────────────────────────────────────────────
+
+    async function loadGlobalAutoSync() {
+      try {
+        const data = await api("/api/parameter-auto-sync");
+        globalAutoSyncParameterNamesInput.value = (data.parameterNames || []).join("\n");
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
     // ── Per-avatar auto sync ─────────────────────────────────────────────────
 
     async function loadAvatarAutoSync(avatarId) {
@@ -918,6 +955,12 @@
       avatarFiltersParameterNamesInput.value = parameterNames.sort((a, b) => a.localeCompare(b)).join("\n");
     });
 
+    saveGlobalAutoSyncBtn.addEventListener("click", async () => {
+      const parameterNames = parseParameterNames(globalAutoSyncParameterNamesInput.value);
+      await runProfileAction("/api/parameter-auto-sync", { parameterNames }, saveGlobalAutoSyncBtn);
+      globalAutoSyncParameterNamesInput.value = parameterNames.sort((a, b) => a.localeCompare(b)).join("\n");
+    });
+
     saveAutoSyncSettingsBtn.addEventListener("click", async () => {
       const avatarId = selectedAutoSyncAvatarId;
       if (!avatarId) { setStatus("Select an avatar first.", true); return; }
@@ -953,6 +996,7 @@
     // ── Initial load ─────────────────────────────────────────────────────────────
     loadCopySourceAvatars(true);
     loadExcludedParameterNames();
+    loadGlobalAutoSync();
     loadStatus().then(async () => {
       await populateSettingsAvatarSelectors({ preferCurrentAvatar: true });
       if (selectedAvatarFiltersId) loadAvatarFilters(selectedAvatarFiltersId);
