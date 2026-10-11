@@ -8,12 +8,21 @@ using UnityEngine;
 using UnityEngine.Networking;
 using VRC.OSCQuery;
 
+/// <summary>A parameter pinned to a fixed value. <c>type</c> is the OSC type tag: "f" (float), "i" (int) or "T" (bool).</summary>
+public sealed class FixedParameter
+{
+    public string name;
+    public string type;
+    public string value;
+}
+
 public class ProfileService
 {
     private readonly OscService _oscService;
     private const string NameFile = "Name";
     private const string ApplyProfileSettingsFile = "ApplyProfileSettings.json";
     private const string AutoSyncSettingsFile = "AutoSync.json";
+    private const string FixedParametersFile = "FixedParameters.json";
     private const string AvatarMetadataFolderName = "Avatars";
     private const string AvatarMetadataFilePattern = "avtr_*.json";
 
@@ -567,6 +576,11 @@ public class ProfileService
         public List<string> parameterNames = new List<string>();
     }
 
+    private sealed class FixedParametersSettings
+    {
+        public List<FixedParameter> parameters = new List<FixedParameter>();
+    }
+
     /// <summary>Serialized representation of a single OSC parameter entry in a profile file.</summary>
     /// <remarks>JsonProperty names match the legacy ValueTuple serialization ("Item1"/"Item2") for backward compatibility.</remarks>
     private sealed class OscParameterEntry
@@ -682,7 +696,103 @@ public class ProfileService
         File.WriteAllText(GetAvatarAutoSyncFilePath(avatarId), JsonConvert.SerializeObject(settings, Formatting.Indented));
         return normalized;
     }
+    // ── Fixed parameters (global + per avatar) ────────────────────────────────────────
 
+    public List<FixedParameter> GetGlobalFixedParameters()
+        => ReadFixedParameters(GetGlobalFixedParametersFilePath(), "global");
+
+    public List<FixedParameter> SaveGlobalFixedParameters(IEnumerable<FixedParameter> parameters)
+        => WriteFixedParameters(GetGlobalFixedParametersFilePath(), parameters);
+
+    public List<FixedParameter> GetAvatarFixedParameters(string avatarId)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId)) return new List<FixedParameter>();
+        return ReadFixedParameters(GetAvatarFixedParametersFilePath(avatarId), $"avatar '{avatarId}'");
+    }
+
+    public List<FixedParameter> SaveAvatarFixedParameters(string avatarId, IEnumerable<FixedParameter> parameters)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId)) return new List<FixedParameter>();
+        EnsureAvatarFolder(avatarId);
+        return WriteFixedParameters(GetAvatarFixedParametersFilePath(avatarId), parameters);
+    }
+
+    /// <summary>Global fixed parameters merged with the avatar's own; the avatar's entry wins on a name clash.</summary>
+    public List<FixedParameter> GetEffectiveFixedParameters(string avatarId)
+    {
+        var merged = new Dictionary<string, FixedParameter>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in GetGlobalFixedParameters()) merged[entry.name] = entry;
+        foreach (var entry in GetAvatarFixedParameters(avatarId)) merged[entry.name] = entry;
+        return merged.Values.ToList();
+    }
+
+    private static List<FixedParameter> ReadFixedParameters(string filePath, string scope)
+    {
+        if (!File.Exists(filePath)) return new List<FixedParameter>();
+        try
+        {
+            var json = File.ReadAllText(filePath);
+            if (string.IsNullOrWhiteSpace(json)) return new List<FixedParameter>();
+            var settings = JsonConvert.DeserializeObject<FixedParametersSettings>(json);
+            return NormalizeFixedParameters(settings?.parameters, false);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Failed to read fixed parameters for {scope}: {ex.Message}");
+            return new List<FixedParameter>();
+        }
+    }
+
+    private static List<FixedParameter> WriteFixedParameters(string filePath, IEnumerable<FixedParameter> parameters)
+    {
+        var normalized = NormalizeFixedParameters(parameters, true);
+        var settings = new FixedParametersSettings { parameters = normalized };
+        File.WriteAllText(filePath, JsonConvert.SerializeObject(settings, Formatting.Indented));
+        return normalized;
+    }
+
+    /// <summary>
+    /// Trims names, validates type ("f"/"i"/"T") and value, de-duplicates by name (last wins) and sorts.
+    /// When <paramref name="strict"/> is true an invalid entry throws; otherwise it is skipped.
+    /// </summary>
+    private static List<FixedParameter> NormalizeFixedParameters(IEnumerable<FixedParameter> parameters, bool strict)
+    {
+        var result = new Dictionary<string, FixedParameter>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in parameters ?? Enumerable.Empty<FixedParameter>())
+        {
+            var name = entry?.name?.Trim();
+            if (string.IsNullOrEmpty(name)) continue;
+
+            var type = entry.type?.Trim();
+            var rawValue = entry.value?.Trim() ?? string.Empty;
+            string normalizedValue;
+            switch (type)
+            {
+                case "f":
+                    if (!float.TryParse(rawValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var f))
+                    { if (strict) throw new InvalidOperationException($"'{rawValue}' is not a valid float for '{name}'"); continue; }
+                    normalizedValue = f.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    break;
+                case "i":
+                    if (!int.TryParse(rawValue, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var i))
+                    { if (strict) throw new InvalidOperationException($"'{rawValue}' is not a valid int for '{name}'"); continue; }
+                    normalizedValue = i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    break;
+                case "T":
+                    if (!bool.TryParse(rawValue, out var b))
+                    { if (strict) throw new InvalidOperationException($"'{rawValue}' is not a valid bool for '{name}'"); continue; }
+                    normalizedValue = b.ToString();
+                    break;
+                default:
+                    if (strict) throw new InvalidOperationException($"Unknown type '{type}' for '{name}'");
+                    continue;
+            }
+
+            result[name] = new FixedParameter { name = name, type = type, value = normalizedValue };
+        }
+
+        return result.Values.OrderBy(p => p.name, StringComparer.OrdinalIgnoreCase).ToList();
+    }
     // ── Per-avatar profile filters ──────────────────────────────────────────────
 
     public List<string> GetAvatarExcludedParameterNames(string avatarId)
@@ -741,6 +851,17 @@ public class ProfileService
     private static string GetAvatarAutoSyncFilePath(string avatarId)
         => Path.Combine(GetProfilesRootPath(), avatarId, AutoSyncSettingsFile);
 
+    private static string GetGlobalFixedParametersFilePath()
+    {
+        var profilesRootPath = GetProfilesRootPath();
+        if (!Directory.Exists(profilesRootPath))
+            Directory.CreateDirectory(profilesRootPath);
+        return Path.Combine(profilesRootPath, FixedParametersFile);
+    }
+
+    private static string GetAvatarFixedParametersFilePath(string avatarId)
+        => Path.Combine(GetProfilesRootPath(), avatarId, FixedParametersFile);
+
     private static void EnsureAvatarFolder(string avatarId)
     {
         var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
@@ -754,7 +875,8 @@ public class ProfileService
         var fileName = Path.GetFileName(filePath);
         return !string.Equals(fileName, NameFile, StringComparison.OrdinalIgnoreCase)
             && !string.Equals(fileName, ApplyProfileSettingsFile, StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(fileName, AutoSyncSettingsFile, StringComparison.OrdinalIgnoreCase);
+            && !string.Equals(fileName, AutoSyncSettingsFile, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(fileName, FixedParametersFile, StringComparison.OrdinalIgnoreCase);
     }
 
     private static List<string> NormalizeExcludedParameterNames(IEnumerable<string> parameterNames)
@@ -799,6 +921,64 @@ public class ProfileService
             ? parameterPath.Substring(lastSlash + 1)
             : parameterPath;
         return names.Contains(parameterName);
+    }
+
+    /// <summary>Display names of the saved profiles of any avatar, in profile order. Does not change the loaded avatar.</summary>
+    public List<string> GetSavedProfileNames(string avatarId)
+    {
+        if (string.IsNullOrWhiteSpace(avatarId)) return new List<string>();
+        var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
+        if (!Directory.Exists(folderPath)) return new List<string>();
+        return GetOrderedProfileEntries(folderPath).Select(entry => entry.DisplayName).ToList();
+    }
+
+    /// <summary>
+    /// Looks up the given parameter names in a saved profile of any avatar and returns their stored type and value.
+    /// A name matches the full path, the path relative to "/avatar/parameters/", or (if it has no slash) the last segment.
+    /// Names that are not in the profile are omitted. Does not change the loaded avatar.
+    /// </summary>
+    public List<FixedParameter> ResolveFixedParametersFromProfile(string avatarId, string profileName, IEnumerable<string> names)
+    {
+        var result = new List<FixedParameter>();
+        if (string.IsNullOrWhiteSpace(avatarId) || string.IsNullOrWhiteSpace(profileName)) return result;
+
+        var folderPath = Path.Combine(GetProfilesRootPath(), avatarId);
+        if (!Directory.Exists(folderPath)) return result;
+
+        var entry = GetOrderedProfileEntries(folderPath).FirstOrDefault(e => e.DisplayName == profileName);
+        if (entry == null) throw new InvalidOperationException($"Profile '{profileName}' not found");
+
+        var stored = JsonConvert.DeserializeObject<Dictionary<string, OscParameterEntry>>(File.ReadAllText(entry.Path));
+        if (stored == null || stored.Count == 0) return result;
+
+        var lookup = new Dictionary<string, OscParameterEntry>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pair in stored)
+        {
+            if (pair.Value != null) lookup[pair.Key] = pair.Value;
+        }
+
+        foreach (var rawName in names ?? Enumerable.Empty<string>())
+        {
+            var name = rawName?.Trim();
+            if (string.IsNullOrEmpty(name)) continue;
+
+            if (!lookup.TryGetValue(name, out var match) && !lookup.TryGetValue(AvatarParametersPrefix + name, out match)
+                && name.IndexOf('/') < 0)
+            {
+                match = lookup
+                    .FirstOrDefault(pair => string.Equals(
+                        pair.Key.Substring(pair.Key.LastIndexOf('/') + 1), name, StringComparison.OrdinalIgnoreCase))
+                    .Value;
+            }
+
+            if (match == null) continue;
+
+            var normalized = NormalizeFixedParameters(
+                new[] { new FixedParameter { name = name, type = match.OscType, value = match.Value } }, false);
+            if (normalized.Count > 0) result.Add(normalized[0]);
+        }
+
+        return result;
     }
 
     public bool RenameProfile(string displayName, string nameOverride)

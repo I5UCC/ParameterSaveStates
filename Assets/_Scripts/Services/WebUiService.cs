@@ -386,6 +386,63 @@ public sealed class WebUiService : IDisposable
                 return;
             }
 
+            if (method == "GET" && path.Equals("/api/avatar-profiles", StringComparison.OrdinalIgnoreCase))
+            {
+                var avatarId = GetQueryParam(request, "avatarId");
+                if (string.IsNullOrWhiteSpace(avatarId))
+                    throw new InvalidOperationException("avatarId is required");
+                WriteOk(context.Response, RunOnMainThread(() => new { avatarId, profiles = _profileService.GetSavedProfileNames(avatarId) }));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/fixed-parameters/from-profile", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var avatarId = body.Value<string>("avatarId");
+                var profileName = body.Value<string>("profileName");
+                var names = body["names"]?.ToObject<List<string>>() ?? new List<string>();
+                if (string.IsNullOrWhiteSpace(avatarId))
+                    throw new InvalidOperationException("avatarId is required");
+                if (string.IsNullOrWhiteSpace(profileName))
+                    throw new InvalidOperationException("profileName is required");
+                WriteOk(context.Response, RunOnMainThread(() => new { parameters = _profileService.ResolveFixedParametersFromProfile(avatarId, profileName, names) }));
+                return;
+            }
+
+            if (method == "GET" && path.Equals("/api/fixed-parameters", StringComparison.OrdinalIgnoreCase))
+            {
+                WriteOk(context.Response, RunOnMainThread(() => new { parameters = _profileService.GetGlobalFixedParameters() }));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/fixed-parameters", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var parameters = body["parameters"]?.ToObject<List<FixedParameter>>() ?? new List<FixedParameter>();
+                WriteOk(context.Response, RunOnMainThread(() => new { parameters = _profileService.SaveGlobalFixedParameters(parameters) }));
+                return;
+            }
+
+            if (method == "GET" && path.Equals("/api/avatar-fixed-parameters", StringComparison.OrdinalIgnoreCase))
+            {
+                var avatarId = GetQueryParam(request, "avatarId");
+                if (string.IsNullOrWhiteSpace(avatarId))
+                    throw new InvalidOperationException("avatarId is required");
+                WriteOk(context.Response, RunOnMainThread(() => new { avatarId, parameters = _profileService.GetAvatarFixedParameters(avatarId) }));
+                return;
+            }
+
+            if (method == "POST" && path.Equals("/api/avatar-fixed-parameters", StringComparison.OrdinalIgnoreCase))
+            {
+                var body = ReadJsonBody(request);
+                var avatarId = body.Value<string>("avatarId");
+                if (string.IsNullOrWhiteSpace(avatarId))
+                    throw new InvalidOperationException("avatarId is required");
+                var parameters = body["parameters"]?.ToObject<List<FixedParameter>>() ?? new List<FixedParameter>();
+                WriteOk(context.Response, RunOnMainThread(() => new { avatarId, parameters = _profileService.SaveAvatarFixedParameters(avatarId, parameters) }));
+                return;
+            }
+
             if (method == "GET" && path.Equals("/api/parameter-auto-sync", StringComparison.OrdinalIgnoreCase))
             {
                 WriteOk(context.Response, RunOnMainThread(GetGlobalAutoSync));
