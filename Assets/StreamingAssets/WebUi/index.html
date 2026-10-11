@@ -11,7 +11,7 @@
   </script>
 </head>
 <body class="min-h-screen bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-100 transition-colors">
-  <div class="mx-auto w-full max-w-5xl px-5 py-6">
+  <div class="mx-auto w-full max-w-[1800px] px-5 py-6">
 
     <!-- Header -->
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -85,6 +85,17 @@
     <!-- ══════════════════ SETTINGS PAGE ══════════════════ -->
     <div id="pageSettings" class="hidden flex flex-col gap-4">
 
+      <!-- Settings sub-tabs -->
+      <div class="flex flex-wrap gap-1 border-b border-slate-200 dark:border-slate-700">
+        <button id="subTabGeneral" type="button" class="-mb-px rounded-t-lg px-4 py-2 text-sm font-semibold transition focus:outline-none" onclick="switchSettingsTab('general')">General</button>
+        <button id="subTabFilters" type="button" class="-mb-px rounded-t-lg px-4 py-2 text-sm font-semibold transition focus:outline-none" onclick="switchSettingsTab('filters')">Profile Filters</button>
+        <button id="subTabAutoSync" type="button" class="-mb-px rounded-t-lg px-4 py-2 text-sm font-semibold transition focus:outline-none" onclick="switchSettingsTab('autoSync')">Auto Sync</button>
+        <button id="subTabFixed" type="button" class="-mb-px rounded-t-lg px-4 py-2 text-sm font-semibold transition focus:outline-none" onclick="switchSettingsTab('fixed')">Fixed Parameters</button>
+      </div>
+
+      <!-- ── General pane ── -->
+      <div id="settingsPaneGeneral" class="flex flex-col gap-4">
+
       <!-- Profile Management -->
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
         <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Profile Management</h2>
@@ -135,12 +146,19 @@
         </div>
       </div>
 
+      </div>
+
+      <!-- ── Profile Filters pane ── -->
+      <div id="settingsPaneFilters" class="hidden flex flex-col gap-4">
+
       <!-- Apply Profile Filters -->
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
         <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Apply Profile Filters</h2>
 
+        <div class="mt-3 grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+
         <!-- Global filters -->
-        <div class="mt-3">
+        <div class="min-w-0">
           <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Global Filters</p>
           <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Skipped for all avatars when applying any profile.</p>
           <div class="mt-2 flex flex-col gap-2">
@@ -154,7 +172,7 @@
         </div>
 
         <!-- Per-avatar filters -->
-        <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+        <div class="min-w-0 border-t border-slate-200 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 dark:border-slate-700">
           <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Per-Avatar Filters</p>
           <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Applied in addition to global filters for the selected avatar.</p>
           <div class="mt-2 flex flex-col gap-2">
@@ -182,14 +200,23 @@
             </div>
           </div>
         </div>
+
+        </div><!-- /grid -->
       </div>
+
+      </div>
+
+      <!-- ── Auto Sync pane ── -->
+      <div id="settingsPaneAutoSync" class="hidden flex flex-col gap-4">
 
       <!-- Avatar Parameter Auto Sync -->
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
         <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Parameter Auto Sync</h2>
 
+        <div class="mt-3 grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+
         <!-- Global auto sync -->
-        <div class="mt-3">
+        <div class="min-w-0">
           <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Global Auto Sync</p>
           <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">When switching to any avatar, the listed parameter names are copied from the previous avatar's last known values.</p>
           <div class="mt-2 flex flex-col gap-2">
@@ -203,7 +230,7 @@
         </div>
 
         <!-- Per-avatar auto sync -->
-        <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+        <div class="min-w-0 border-t border-slate-200 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 dark:border-slate-700">
         <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Per-Avatar Auto Sync</p>
         <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Applied in addition to global auto sync when switching into the selected avatar.</p>
         <div class="mt-2 flex flex-col gap-2">
@@ -231,15 +258,24 @@
           </div>
         </div>
         </div>
+
+        </div><!-- /grid -->
       </div>
+
+      </div>
+
+      <!-- ── Fixed Parameters pane ── -->
+      <div id="settingsPaneFixed" class="hidden flex flex-col gap-4">
 
       <!-- Fixed Parameters -->
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
         <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-200">Fixed Parameters</h2>
         <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">Parameters set to a fixed value whenever you switch to an avatar. Applied after auto sync, so a fixed value wins over a synced one. Not sure which value is needed? Add the names (value optional), then use “Fill values from profile” to copy the values and types from a saved profile of any avatar. Review the list, then save.</p>
 
+        <div class="mt-3 grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+
         <!-- Global fixed parameters -->
-        <div class="mt-3">
+        <div class="min-w-0">
           <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Global Fixed Parameters</p>
           <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Set for every avatar.</p>
           <div class="mt-2 flex flex-col gap-2">
@@ -253,7 +289,7 @@
         </div>
 
         <!-- Per-avatar fixed parameters -->
-        <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+        <div class="min-w-0 border-t border-slate-200 pt-4 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 dark:border-slate-700">
           <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Per-Avatar Fixed Parameters</p>
           <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Set for the selected avatar only. Overrides a global entry with the same name.</p>
           <div class="mt-2 flex flex-col gap-2">
@@ -281,6 +317,10 @@
             </div>
           </div>
         </div>
+
+        </div><!-- /grid -->
+      </div>
+
       </div>
 
     </div>
@@ -323,7 +363,7 @@
         inputRow.append(this.inputEl, addBtn);
 
         this.listEl = document.createElement("div");
-        this.listEl.className = "max-h-56 overflow-y-auto rounded-lg border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950";
+        this.listEl.className = "rounded-lg border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950";
 
         rootEl.append(inputRow, this.listEl);
         this.render();
@@ -498,7 +538,7 @@
         inputRow.append(this.nameEl, this.typeEl, this.valueEl, this.boolEl, addBtn);
 
         this.listEl = document.createElement("div");
-        this.listEl.className = "max-h-56 overflow-y-auto rounded-lg border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950";
+        this.listEl.className = "rounded-lg border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950";
 
         rootEl.append(inputRow, this.buildFillRow(fieldClass, options), this.listEl);
         this.render();
@@ -887,6 +927,31 @@
 
     // Restore last active tab on load
     switchTab(localStorage.getItem("activeTab") || "main");
+
+    // ── Settings sub-tabs ───────────────────────────────────────────────────────
+    const SUBTAB_ACTIVE   = "border border-b-white border-slate-200 bg-white text-sky-600 dark:border-slate-700 dark:border-b-slate-950 dark:bg-slate-950 dark:text-sky-400";
+    const SUBTAB_INACTIVE = "border border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100";
+    const SETTINGS_TABS = {
+      general:  { button: "subTabGeneral",  pane: "settingsPaneGeneral" },
+      filters:  { button: "subTabFilters",  pane: "settingsPaneFilters" },
+      autoSync: { button: "subTabAutoSync", pane: "settingsPaneAutoSync" },
+      fixed:    { button: "subTabFixed",    pane: "settingsPaneFixed" }
+    };
+
+    function switchSettingsTab(tab) {
+      if (!SETTINGS_TABS[tab]) tab = "general";
+      Object.entries(SETTINGS_TABS).forEach(([key, ids]) => {
+        const active = key === tab;
+        document.getElementById(ids.pane).classList.toggle("hidden", !active);
+        document.getElementById(ids.button).className =
+          `-mb-px rounded-t-lg px-4 py-2 text-sm font-semibold transition focus:outline-none ${active ? SUBTAB_ACTIVE : SUBTAB_INACTIVE}`;
+      });
+      // The dropdown class is declared later in the script, so it isn't available on the initial call.
+      try { AvatarSearchDropdown.closeAll(); } catch (_) {}
+      localStorage.setItem("activeSettingsTab", tab);
+    }
+
+    switchSettingsTab(localStorage.getItem("activeSettingsTab") || "general");
 
     // ── Theme ───────────────────────────────────────────────────────────────────
     function applyTheme(theme) {
