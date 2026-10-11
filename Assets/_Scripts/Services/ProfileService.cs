@@ -768,13 +768,28 @@ public class ProfileService
     }
 
     private static bool ShouldSkipParameter(string parameterPath, HashSet<string> exclusionSet)
+        => MatchesParameterName(parameterPath, exclusionSet);
+
+    private const string AvatarParametersPrefix = "/avatar/parameters/";
+
+    /// <summary>
+    /// Matches an OSC parameter path against a set of names. A name matches if it equals the full path,
+    /// the path relative to "/avatar/parameters/" (e.g. "FT/EyeSync"), or the last path segment (e.g. "EyeSync").
+    /// </summary>
+    public static bool MatchesParameterName(string parameterPath, HashSet<string> names)
     {
-        if (exclusionSet == null || exclusionSet.Count == 0 || string.IsNullOrWhiteSpace(parameterPath))
+        if (names == null || names.Count == 0 || string.IsNullOrWhiteSpace(parameterPath))
         {
             return false;
         }
 
-        if (exclusionSet.Contains(parameterPath))
+        if (names.Contains(parameterPath))
+        {
+            return true;
+        }
+
+        if (parameterPath.StartsWith(AvatarParametersPrefix, StringComparison.OrdinalIgnoreCase)
+            && names.Contains(parameterPath.Substring(AvatarParametersPrefix.Length)))
         {
             return true;
         }
@@ -783,7 +798,7 @@ public class ProfileService
         var parameterName = lastSlash >= 0 && lastSlash < parameterPath.Length - 1
             ? parameterPath.Substring(lastSlash + 1)
             : parameterPath;
-        return exclusionSet.Contains(parameterName);
+        return names.Contains(parameterName);
     }
 
     public bool RenameProfile(string displayName, string nameOverride)

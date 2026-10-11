@@ -470,20 +470,21 @@ public class ParameterSaveStates_Director : MonoBehaviour
 
         var snapshot = _oscService.GetLastAvatarParameterSnapshot();
         if (snapshot.Count == 0)
+        {
+            Debug.Log($"Auto-sync for avatar '{avatarId}': no previous avatar parameter snapshot available.");
             return;
+        }
 
         var selectedNames = new HashSet<string>(parameterNames, StringComparer.OrdinalIgnoreCase);
+        var matchedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var appliedCount = 0;
         foreach (var pair in snapshot)
         {
             var parameterPath = pair.Key;
             if (string.IsNullOrWhiteSpace(parameterPath)) continue;
 
-            var slashIndex = parameterPath.LastIndexOf('/');
-            var leafName = slashIndex >= 0 && slashIndex < parameterPath.Length - 1
-                ? parameterPath.Substring(slashIndex + 1)
-                : parameterPath;
-            if (!selectedNames.Contains(parameterPath) && !selectedNames.Contains(leafName)) continue;
+            if (!ProfileService.MatchesParameterName(parameterPath, selectedNames)) continue;
+            matchedNames.Add(parameterPath);
 
             var value = pair.Value;
             if (value == null) continue;
@@ -505,8 +506,8 @@ public class ParameterSaveStates_Director : MonoBehaviour
             }
         }
 
-        if (appliedCount > 0)
-            Debug.Log($"Auto-synced {appliedCount} selected parameter(s) for avatar '{avatarId}'.");
+        Debug.Log($"Auto-sync for avatar '{avatarId}': {selectedNames.Count} configured name(s), " +
+                  $"{snapshot.Count} snapshot parameter(s), {matchedNames.Count} matched, {appliedCount} sent.");
     }
 
     #endregion
