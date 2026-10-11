@@ -540,7 +540,7 @@
         this.profileSelectEl.innerHTML = "";
         const placeholder = document.createElement("option");
         placeholder.value = "";
-        placeholder.textContent = profiles.length ? "Select profile..." : "No profiles";
+        placeholder.textContent = profiles.length || !this.sourceAvatarId ? "Select profile..." : "No profiles";
         this.profileSelectEl.appendChild(placeholder);
         profiles.forEach((name) => {
           const option = document.createElement("option");
@@ -556,14 +556,18 @@
         if (!this.avatarSelectEl) return;
         const previous = this.avatarSelectEl.value;
         this.avatarSelectEl.innerHTML = "";
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Select avatar...";
+        this.avatarSelectEl.appendChild(placeholder);
         options.forEach((opt) => {
           const option = document.createElement("option");
           option.value = opt.avatarId;
           option.textContent = opt.label;
           this.avatarSelectEl.appendChild(option);
         });
-        const wanted = [preferredAvatarId, previous].find((id) => id && options.some((opt) => opt.avatarId === id))
-          || (options.length ? options[0].avatarId : "");
+        // No fallback to the first avatar: nothing is selected unless one is preferred or already chosen.
+        const wanted = [preferredAvatarId, previous].find((id) => id && options.some((opt) => opt.avatarId === id)) || "";
         this.avatarSelectEl.value = wanted;
         this.setSourceAvatar(wanted);
       }
@@ -974,6 +978,7 @@
     let lastStatus = null;
     let lastKnownCurrentAvatar = "";
     let lastKnownPreviousAvatar = "";
+    let statusLoadedOnce = false;
     let copyFromAvatarOptions = [];
     let settingsAvatarOptions = [];
     let selectedCopyFromAvatarId = "";
@@ -1070,9 +1075,9 @@
         }
 
         this.triggerEl.disabled = false;
-        const selected = this.options.find((option) => option.avatarId === preferredAvatarId)
-          || this.options[0];
-        this.selectedId = selected.avatarId;
+        // No fallback to the first option: if the preferred avatar isn't available, nothing is selected.
+        const selected = this.options.find((option) => option.avatarId === preferredAvatarId);
+        this.selectedId = selected ? selected.avatarId : "";
         this.updateTrigger();
         this.renderOptions();
         this.onSelected(this.selectedId);
@@ -1180,8 +1185,11 @@
       }
       try {
         const data = await api("/api/status");
-        const avatarChanged = data.currentAvatar !== lastKnownCurrentAvatar
-          || data.previousAvatar !== lastKnownPreviousAvatar;
+        const avatarChanged = (data.currentAvatar || "") !== lastKnownCurrentAvatar
+          || (data.previousAvatar || "") !== lastKnownPreviousAvatar;
+        // The first status load is just the page opening, not an avatar change: preselect nothing then.
+        const followAvatar = statusLoadedOnce;
+        statusLoadedOnce = true;
         lastStatus = data;
         lastKnownCurrentAvatar = data.currentAvatar || "";
         lastKnownPreviousAvatar = data.previousAvatar || "";
@@ -1193,8 +1201,8 @@
         setStatus(data.connected ? "Ready" : "Waiting for VRChat to connect...", false);
 
         if (avatarChanged) {
-          await loadCopySourceAvatars(true);
-          await populateSettingsAvatarSelectors({ preferCurrentAvatar: true });
+          await loadCopySourceAvatars(followAvatar);
+          await populateSettingsAvatarSelectors({ preferCurrentAvatar: followAvatar });
           if (selectedAvatarFiltersId) loadAvatarFilters(selectedAvatarFiltersId);
           if (selectedAutoSyncAvatarId) loadAvatarAutoSync(selectedAutoSyncAvatarId);
           if (selectedFixedAvatarId) loadAvatarFixed(selectedFixedAvatarId);
@@ -1277,19 +1285,21 @@
       const currentAvatarId = lastStatus && lastStatus.currentAvatar ? lastStatus.currentAvatar : "";
       const preferredSettingsAvatarId = preferCurrentAvatar ? currentAvatarId : "";
 
+      // Follow the current avatar only when asked to (after an avatar change); otherwise keep
+      // whatever is selected, which is nothing by default.
       avatarFiltersPicker.setOptions(
         settingsAvatarOptions,
-        preferredSettingsAvatarId || selectedAvatarFiltersId || currentAvatarId
+        preferredSettingsAvatarId || selectedAvatarFiltersId
       );
 
       autoSyncPicker.setOptions(
         settingsAvatarOptions,
-        preferredSettingsAvatarId || selectedAutoSyncAvatarId || currentAvatarId
+        preferredSettingsAvatarId || selectedAutoSyncAvatarId
       );
 
       fixedPicker.setOptions(
         settingsAvatarOptions,
-        preferredSettingsAvatarId || selectedFixedAvatarId || currentAvatarId
+        preferredSettingsAvatarId || selectedFixedAvatarId
       );
 
       globalFixedEditor.setAvatarOptions(settingsAvatarOptions, preferredSettingsAvatarId);
@@ -1542,7 +1552,7 @@
         ].forEach((editor) => { editor.dirty = false; });
 
         await loadStatus();
-        await loadCopySourceAvatars(true);
+        await loadCopySourceAvatars();
         await Promise.all([loadExcludedParameterNames(), loadGlobalAutoSync(), loadGlobalFixed()]);
         // Re-selecting the avatars in the pickers reloads the per-avatar lists.
         await populateSettingsAvatarSelectors({ preferCurrentAvatar: false });
@@ -1643,12 +1653,12 @@
     });
 
     // ── Initial load ─────────────────────────────────────────────────────────────
-    loadCopySourceAvatars(true);
+    loadCopySourceAvatars();
     loadExcludedParameterNames();
     loadGlobalAutoSync();
     loadGlobalFixed();
     loadStatus().then(async () => {
-      await populateSettingsAvatarSelectors({ preferCurrentAvatar: true });
+      await populateSettingsAvatarSelectors({ preferCurrentAvatar: false });
       if (selectedAvatarFiltersId) loadAvatarFilters(selectedAvatarFiltersId);
       if (selectedAutoSyncAvatarId) loadAvatarAutoSync(selectedAutoSyncAvatarId);
       if (selectedFixedAvatarId) loadAvatarFixed(selectedFixedAvatarId);
