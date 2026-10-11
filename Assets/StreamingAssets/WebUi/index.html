@@ -142,14 +142,9 @@
         <!-- Global filters -->
         <div class="mt-3">
           <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Global Filters</p>
-          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Skipped for all avatars when applying any profile. One name per line.</p>
+          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Skipped for all avatars when applying any profile.</p>
           <div class="mt-2 flex flex-col gap-2">
-            <textarea
-              id="excludedParameterNamesInput"
-              rows="4"
-              placeholder="Enter Parameter Names"
-              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-            ></textarea>
+            <div id="excludedParameterNamesInput"></div>
             <div class="flex justify-end">
               <button id="saveExcludedParametersBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
                 Save Global Filters
@@ -161,7 +156,7 @@
         <!-- Per-avatar filters -->
         <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
           <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Per-Avatar Filters</p>
-          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Applied in addition to global filters for the selected avatar. One name per line.</p>
+          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Applied in addition to global filters for the selected avatar.</p>
           <div class="mt-2 flex flex-col gap-2">
             <div id="avatarFiltersDropdown" class="relative">
               <button
@@ -179,12 +174,7 @@
                 <div id="avatarFiltersOptions" class="max-h-56 overflow-y-auto"></div>
               </div>
             </div>
-            <textarea
-              id="avatarFiltersParameterNamesInput"
-              rows="4"
-              placeholder="Enter Parameter Names"
-              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-            ></textarea>
+            <div id="avatarFiltersParameterNamesInput"></div>
             <div class="flex justify-end">
               <button id="saveAvatarFiltersBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
                 Save Avatar Filters
@@ -201,14 +191,9 @@
         <!-- Global auto sync -->
         <div class="mt-3">
           <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Global Auto Sync</p>
-          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">When switching to any avatar, the listed parameter names are copied from the previous avatar's last known values. One name per line.</p>
+          <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">When switching to any avatar, the listed parameter names are copied from the previous avatar's last known values.</p>
           <div class="mt-2 flex flex-col gap-2">
-            <textarea
-              id="globalAutoSyncParameterNamesInput"
-              rows="4"
-              placeholder="Enter Parameter Names"
-              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-            ></textarea>
+            <div id="globalAutoSyncParameterNamesInput"></div>
             <div class="flex justify-end">
               <button id="saveGlobalAutoSyncBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
                 Save Global Auto Sync
@@ -220,7 +205,7 @@
         <!-- Per-avatar auto sync -->
         <div class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
         <p class="text-xs font-medium text-slate-700 dark:text-slate-300">Per-Avatar Auto Sync</p>
-        <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Applied in addition to global auto sync when switching into the selected avatar. One name per line.</p>
+        <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Applied in addition to global auto sync when switching into the selected avatar.</p>
         <div class="mt-2 flex flex-col gap-2">
           <div id="autoSyncDropdown" class="relative">
             <button
@@ -238,12 +223,7 @@
               <div id="autoSyncOptions" class="max-h-56 overflow-y-auto"></div>
             </div>
           </div>
-          <textarea
-            id="autoSyncParameterNamesInput"
-            rows="6"
-            placeholder="Enter Parameter Names"
-            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-          ></textarea>
+          <div id="autoSyncParameterNamesInput"></div>
           <div class="flex justify-end">
             <button id="saveAutoSyncSettingsBtn" class="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400">
               Save Avatar Auto Sync
@@ -257,6 +237,109 @@
   </div>
 
   <script>
+    // ── Parameter name list editor (add / remove entries) ───────────────────────
+    class ParameterListEditor {
+      constructor(rootEl) {
+        this.rootEl = rootEl;
+        this.names = [];
+        rootEl.className = "flex flex-col gap-2";
+
+        const inputRow = document.createElement("div");
+        inputRow.className = "flex gap-2";
+
+        this.inputEl = document.createElement("input");
+        this.inputEl.type = "text";
+        this.inputEl.placeholder = "Parameter name (e.g. LipTrackingActive/EyeTrackingActive)";
+        this.inputEl.className = "min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
+        this.inputEl.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") { event.preventDefault(); this.commitPending(); }
+        });
+        this.inputEl.addEventListener("paste", (event) => {
+          const text = (event.clipboardData || window.clipboardData).getData("text");
+          if (/[\r\n]/.test(text)) {
+            event.preventDefault();
+            this.addMany(text);
+          }
+        });
+
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.textContent = "Add";
+        addBtn.className = "rounded-lg border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700";
+        addBtn.addEventListener("click", () => { this.commitPending(); this.inputEl.focus(); });
+
+        inputRow.append(this.inputEl, addBtn);
+
+        this.listEl = document.createElement("div");
+        this.listEl.className = "max-h-56 overflow-y-auto rounded-lg border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950";
+
+        rootEl.append(inputRow, this.listEl);
+        this.render();
+      }
+
+      commitPending() {
+        const value = this.inputEl.value;
+        this.inputEl.value = "";
+        this.addMany(value);
+      }
+
+      addMany(rawValue) {
+        (rawValue || "").split(/[\r\n,]+/).forEach((part) => {
+          const name = part.trim();
+          if (!name) return;
+          if (this.names.some((existing) => existing.toLowerCase() === name.toLowerCase())) return;
+          this.names.push(name);
+        });
+        this.render();
+      }
+
+      remove(name) {
+        this.names = this.names.filter((existing) => existing !== name);
+        this.render();
+      }
+
+      getNames() {
+        this.commitPending();
+        return [...this.names];
+      }
+
+      setNames(names) {
+        this.names = Array.isArray(names) ? [...names] : [];
+        this.render();
+      }
+
+      render() {
+        this.listEl.innerHTML = "";
+        if (!this.names.length) {
+          const empty = document.createElement("div");
+          empty.className = "px-3 py-2 text-sm text-slate-500 dark:text-slate-400";
+          empty.textContent = "No parameters added.";
+          this.listEl.appendChild(empty);
+          return;
+        }
+
+        this.names.forEach((name) => {
+          const row = document.createElement("div");
+          row.className = "flex items-center justify-between gap-2 border-b border-slate-200 px-3 py-1.5 last:border-b-0 dark:border-slate-800";
+
+          const label = document.createElement("span");
+          label.className = "min-w-0 flex-1 truncate text-sm text-slate-900 dark:text-slate-100";
+          label.textContent = name;
+          label.title = name;
+
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.textContent = "×";
+          removeBtn.title = "Remove";
+          removeBtn.className = "rounded px-2 text-lg leading-none text-slate-500 transition hover:bg-red-100 hover:text-red-600 focus:outline-none dark:text-slate-400 dark:hover:bg-red-900/40 dark:hover:text-red-400";
+          removeBtn.addEventListener("click", () => this.remove(name));
+
+          row.append(label, removeBtn);
+          this.listEl.appendChild(row);
+        });
+      }
+    }
+
     const statusEl = document.getElementById("status");
     const currentAvatarEl = document.getElementById("currentAvatar");
     const previousAvatarEl = document.getElementById("previousAvatar");
@@ -268,20 +351,20 @@
     const copyFromAvatarPanel = document.getElementById("copyFromAvatarPanel");
     const copyFromAvatarSearch = document.getElementById("copyFromAvatarSearch");
     const copyFromAvatarOptionsEl = document.getElementById("copyFromAvatarOptions");
-    const excludedParameterNamesInput = document.getElementById("excludedParameterNamesInput");
+    const excludedParameterNamesInput = new ParameterListEditor(document.getElementById("excludedParameterNamesInput"));
     const avatarFiltersDropdown = document.getElementById("avatarFiltersDropdown");
     const avatarFiltersTrigger = document.getElementById("avatarFiltersTrigger");
     const avatarFiltersPanel = document.getElementById("avatarFiltersPanel");
     const avatarFiltersSearch = document.getElementById("avatarFiltersSearch");
     const avatarFiltersOptionsEl = document.getElementById("avatarFiltersOptions");
-    const avatarFiltersParameterNamesInput = document.getElementById("avatarFiltersParameterNamesInput");
+    const avatarFiltersParameterNamesInput = new ParameterListEditor(document.getElementById("avatarFiltersParameterNamesInput"));
     const autoSyncDropdown = document.getElementById("autoSyncDropdown");
     const autoSyncTrigger = document.getElementById("autoSyncTrigger");
     const autoSyncPanel = document.getElementById("autoSyncPanel");
     const autoSyncSearch = document.getElementById("autoSyncSearch");
     const autoSyncOptionsEl = document.getElementById("autoSyncOptions");
-    const autoSyncParameterNamesInput = document.getElementById("autoSyncParameterNamesInput");
-    const globalAutoSyncParameterNamesInput = document.getElementById("globalAutoSyncParameterNamesInput");
+    const autoSyncParameterNamesInput = new ParameterListEditor(document.getElementById("autoSyncParameterNamesInput"));
+    const globalAutoSyncParameterNamesInput = new ParameterListEditor(document.getElementById("globalAutoSyncParameterNamesInput"));
     const saveGlobalAutoSyncBtn = document.getElementById("saveGlobalAutoSyncBtn");
 
     const refreshBtn = document.getElementById("refreshBtn");
@@ -675,18 +758,11 @@
     }
 
     // ── Filters ─────────────────────────────────────────────────────────────────
-    function parseParameterNames(rawValue) {
-      return (rawValue || "")
-        .split(/\r?\n/)
-        .map((name) => name.trim())
-        .filter((name) => name.length > 0);
-    }
-
     async function loadExcludedParameterNames() {
       try {
         const data = await api("/api/profile-apply-filters");
         const names = Array.isArray(data.excludedParameterNames) ? data.excludedParameterNames : [];
-        excludedParameterNamesInput.value = names.join("\n");
+        excludedParameterNamesInput.setNames(names);
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -737,10 +813,10 @@
     // ── Per-avatar filters ────────────────────────────────────────────────────
 
     async function loadAvatarFilters(avatarId) {
-      if (!avatarId) { avatarFiltersParameterNamesInput.value = ""; return; }
+      if (!avatarId) { avatarFiltersParameterNamesInput.setNames([]); return; }
       try {
         const data = await api(`/api/avatar-profile-apply-filters?avatarId=${encodeURIComponent(avatarId)}`);
-        avatarFiltersParameterNamesInput.value = (data.parameterNames || []).join("\n");
+        avatarFiltersParameterNamesInput.setNames(data.parameterNames || []);
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -751,7 +827,7 @@
     async function loadGlobalAutoSync() {
       try {
         const data = await api("/api/parameter-auto-sync");
-        globalAutoSyncParameterNamesInput.value = (data.parameterNames || []).join("\n");
+        globalAutoSyncParameterNamesInput.setNames(data.parameterNames || []);
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -760,10 +836,10 @@
     // ── Per-avatar auto sync ─────────────────────────────────────────────────
 
     async function loadAvatarAutoSync(avatarId) {
-      if (!avatarId) { autoSyncParameterNamesInput.value = ""; return; }
+      if (!avatarId) { autoSyncParameterNamesInput.setNames([]); return; }
       try {
         const data = await api(`/api/avatar-parameter-auto-sync?avatarId=${encodeURIComponent(avatarId)}`);
-        autoSyncParameterNamesInput.value = (data.parameterNames || []).join("\n");
+        autoSyncParameterNamesInput.setNames(data.parameterNames || []);
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -942,31 +1018,31 @@
     });
 
     saveExcludedParametersBtn.addEventListener("click", async () => {
-      const names = parseParameterNames(excludedParameterNamesInput.value);
+      const names = excludedParameterNamesInput.getNames();
       await runProfileAction("/api/profile-apply-filters", { excludedParameterNames: names }, saveExcludedParametersBtn);
-      excludedParameterNamesInput.value = names.sort((a, b) => a.localeCompare(b)).join("\n");
+      excludedParameterNamesInput.setNames(names.sort((a, b) => a.localeCompare(b)));
     });
 
     saveAvatarFiltersBtn.addEventListener("click", async () => {
       const avatarId = selectedAvatarFiltersId;
       if (!avatarId) { setStatus("Select an avatar first.", true); return; }
-      const parameterNames = parseParameterNames(avatarFiltersParameterNamesInput.value);
+      const parameterNames = avatarFiltersParameterNamesInput.getNames();
       await runProfileAction("/api/avatar-profile-apply-filters", { avatarId, parameterNames }, saveAvatarFiltersBtn);
-      avatarFiltersParameterNamesInput.value = parameterNames.sort((a, b) => a.localeCompare(b)).join("\n");
+      avatarFiltersParameterNamesInput.setNames(parameterNames.sort((a, b) => a.localeCompare(b)));
     });
 
     saveGlobalAutoSyncBtn.addEventListener("click", async () => {
-      const parameterNames = parseParameterNames(globalAutoSyncParameterNamesInput.value);
+      const parameterNames = globalAutoSyncParameterNamesInput.getNames();
       await runProfileAction("/api/parameter-auto-sync", { parameterNames }, saveGlobalAutoSyncBtn);
-      globalAutoSyncParameterNamesInput.value = parameterNames.sort((a, b) => a.localeCompare(b)).join("\n");
+      globalAutoSyncParameterNamesInput.setNames(parameterNames.sort((a, b) => a.localeCompare(b)));
     });
 
     saveAutoSyncSettingsBtn.addEventListener("click", async () => {
       const avatarId = selectedAutoSyncAvatarId;
       if (!avatarId) { setStatus("Select an avatar first.", true); return; }
-      const parameterNames = parseParameterNames(autoSyncParameterNamesInput.value);
+      const parameterNames = autoSyncParameterNamesInput.getNames();
       await runProfileAction("/api/avatar-parameter-auto-sync", { avatarId, parameterNames }, saveAutoSyncSettingsBtn);
-      autoSyncParameterNamesInput.value = parameterNames.sort((a, b) => a.localeCompare(b)).join("\n");
+      autoSyncParameterNamesInput.setNames(parameterNames.sort((a, b) => a.localeCompare(b)));
     });
 
     copyFromAvatarBtn.addEventListener("click", () => {
