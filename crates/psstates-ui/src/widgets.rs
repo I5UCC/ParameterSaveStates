@@ -270,18 +270,26 @@ impl FixedEditor {
                 ui.label(RichText::new("No fixed parameters configured").weak());
             }
             // The name field takes what the type, value and remove columns leave.
-            let name_width = (ui.available_width() - 330.0 - ui.spacing().interact_size.y * 2.0)
-                .clamp(160.0, 700.0);
+            let row_h = ui.spacing().interact_size.y;
+            let value_width = 110.0;
+            let type_width = 90.0;
+            let name_width = (ui.available_width()
+                - value_width
+                - type_width
+                - row_h * 2.0
+                - 40.0)
+                .clamp(200.0, 700.0);
             egui::Grid::new("fixed_rows")
                 .num_columns(4)
-                .spacing([8.0, 4.0])
+                .spacing([10.0, 8.0])
                 .show(ui, |ui| {
                     for (i, row) in self.rows.iter_mut().enumerate() {
                         if ui
-                            .add(
+                            .add_sized(
+                                [name_width, row_h],
                                 egui::TextEdit::singleline(&mut row.name)
                                     .hint_text("Parameter name")
-                                    .desired_width(name_width),
+                                    .margin(egui::vec2(6.0, 4.0)),
                             )
                             .changed()
                         {
@@ -289,7 +297,7 @@ impl FixedEditor {
                         }
                         let before = row.ty;
                         egui::ComboBox::from_id_salt(("ty", i))
-                            .width(70.0)
+                            .width(type_width)
                             .selected_text(row.ty.label())
                             .show_ui(ui, |ui| {
                                 for ty in ParamType::ALL {
@@ -310,12 +318,12 @@ impl FixedEditor {
                                 self.dirty = true;
                             }
                         } else {
-                            let mut edit =
-                                egui::TextEdit::singleline(&mut row.value).desired_width(90.0);
+                            let mut edit = egui::TextEdit::singleline(&mut row.value)
+                                .margin(egui::vec2(6.0, 4.0));
                             if !valid {
                                 edit = edit.text_color(RED);
                             }
-                            if ui.add(edit).changed() {
+                            if ui.add_sized([value_width, row_h], edit).changed() {
                                 self.dirty = true;
                             }
                         }
