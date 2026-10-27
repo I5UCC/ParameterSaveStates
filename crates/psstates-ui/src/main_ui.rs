@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use egui::{Align2, RichText, Ui};
 use psstates_core::backup::{default_backup_file_name, export_backup, import_backup};
-use psstates_core::legacy::{looks_like_legacy_dir, migrate_legacy_dir};
+use psstates_core::legacy::{delete_legacy_dir, looks_like_legacy_dir, migrate_legacy_dir};
 use psstates_core::model::FixedParam;
 use psstates_core::rules::normalize_fixed_parameters;
 use psstates_core::{paths, CoreError, MoveDirection, Store, Theme};
@@ -44,6 +44,7 @@ enum Dialog {
     DeleteAvatar { id: String, label: String },
     Import(PathBuf),
     LegacyPrompt(PathBuf),
+    DeleteLegacy(PathBuf),
 }
 
 #[derive(Debug, Clone)]
@@ -62,6 +63,7 @@ enum Action {
     Import(PathBuf),
     PickLegacyDir,
     MigrateLegacy(PathBuf),
+    DeleteLegacy(PathBuf),
     SkipLegacy,
     SetTheme(Theme),
     Reconnect,
@@ -134,7 +136,7 @@ impl MainUi {
             vr: None,
             dialog_opened: false,
             overlay_mode: false,
-            edit_mode: true,
+            edit_mode: false,
             style_applied: false,
             service,
             data: DataCache::default(),
@@ -653,17 +655,27 @@ impl MainUi {
             match &self.legacy_dir {
                 Some(dir) => {
                     ui.label(format!("Found old data at {}", dir.display()));
-                    if ui.button("Import old profiles").clicked() {
-                        self.actions.push(Action::MigrateLegacy(dir.clone()));
-                    }
                 }
                 None => {
                     ui.label(RichText::new("No old data found automatically.").weak());
                 }
             }
-            if ui.button("Choose 'Profiles' folder...").clicked() {
-                self.actions.push(Action::PickLegacyDir);
-            }
+            ui.horizontal_wrapped(|ui| {
+                if let Some(dir) = &self.legacy_dir {
+                    if ui.button("Import old profiles").clicked() {
+                        self.actions.push(Action::MigrateLegacy(dir.clone()));
+                    }
+                }
+                if ui.button("Choose 'Profiles' folder...").clicked() {
+                    self.actions.push(Action::PickLegacyDir);
+                }
+                if let Some(dir) = &self.legacy_dir {
+                    if ui.button("🗑 Delete old folder").clicked() {
+                        self.actions
+                            .push(Action::Open(Dialog::DeleteLegacy(dir.clone())));
+                    }
+                }
+            });
             hint(
                 ui,
                 "Existing profiles are kept; imported profiles with the same name get a '(legacy)' suffix.",
@@ -985,6 +997,20 @@ impl MainUi {
                         actions.push(Action::Import(path.clone()));
                     }
                 }
+                Dialog::DeleteLegacy(path) => {
+                    if confirm(
+                        ui,
+                        "Delete old folder",
+                        &format!(
+                            "Permanently delete the old data folder '{}'? This cannot be undone.",
+                            path.display()
+                        ),
+                        "Delete",
+                        true,
+                    ) {
+                        actions.push(Action::DeleteLegacy(path.clone()));
+                    }
+                }
                 Dialog::LegacyPrompt(path) => {
                     ui.heading("Import old profiles?");
                     ui.add_space(6.0);
@@ -1132,6 +1158,13 @@ impl MainUi {
                 });
                 self.reset_editors();
                 self.report(r, |rep| rep.summary());
+            }
+            Action::DeleteLegacy(path) => {
+                let r = delete_legacy_dir(&path);
+                if r.is_ok() && self.legacy_dir.as_ref() == Some(&path) {
+                    self.legacy_dir = None;
+                }
+                self.report(r, |_| "Deleted old folder".to_string());
             }
             Action::SkipLegacy => {
                 let r = self.store().update_settings(|s| {

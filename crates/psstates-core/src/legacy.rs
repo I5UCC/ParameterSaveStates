@@ -134,6 +134,18 @@ pub fn looks_like_legacy_dir(dir: &Path) -> bool {
         .unwrap_or(false)
 }
 
+/// Deletes a legacy `Profiles` folder (and its contents).
+///
+/// Refuses to delete directories that do not look like a legacy folder.
+pub fn delete_legacy_dir(dir: &Path) -> Result<()> {
+    if !looks_like_legacy_dir(dir) {
+        return Err(CoreError::invalid(
+            "The folder does not look like an old 'Profiles' folder",
+        ));
+    }
+    fs::remove_dir_all(dir).map_err(|e| CoreError::io(dir, e))
+}
+
 fn is_reserved_file(name: &str) -> bool {
     matches!(
         name,
