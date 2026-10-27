@@ -19,7 +19,6 @@ The Unity project in the repository root stays until this version reaches featur
 ## Build and run
 
 ```sh
-cd rust
 cargo run --release
 ```
 

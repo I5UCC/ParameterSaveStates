@@ -2,13 +2,9 @@ name: Rust
 
 on:
   push:
-    paths: ["rust/**", ".github/workflows/rust.yml"]
+    paths: ["crates/**", "xtask/**", "packaging/**", "assets/**", "Cargo.toml", "Cargo.lock", ".github/workflows/rust.yml"]
   pull_request:
-    paths: ["rust/**", ".github/workflows/rust.yml"]
-
-defaults:
-  run:
-    working-directory: rust
+    paths: ["crates/**", "xtask/**", "packaging/**", "assets/**", "Cargo.toml", "Cargo.lock", ".github/workflows/rust.yml"]
 
 env:
   CARGO_TERM_COLOR: always
@@ -34,8 +30,6 @@ jobs:
           components: clippy, rustfmt
 
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust
 
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
@@ -51,6 +45,6 @@ jobs:
         with:
           name: ParameterSaveStates-${{ runner.os }}
           path: |
-            rust/dist/*.zip
-            rust/dist/*.tar.gz
+            dist/*.zip
+            dist/*.tar.gz
           if-no-files-found: error

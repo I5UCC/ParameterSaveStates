@@ -28,7 +28,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: rust
         shell: bash
     steps:
       - uses: actions/checkout@v4
@@ -42,8 +41,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust
 
       - name: Version
         id: version
@@ -73,9 +70,9 @@ jobs:
         with:
           name: ParameterSaveStates-${{ runner.os }}
           path: |
-            rust/dist/*.zip
-            rust/dist/*.tar.gz
-            rust/dist/*.exe
+            dist/*.zip
+            dist/*.tar.gz
+            dist/*.exe
           if-no-files-found: error
 
   release:

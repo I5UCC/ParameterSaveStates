@@ -92,7 +92,12 @@ fn package(args: &[String]) -> Result<()> {
         "app.vrmanifest",
     )?;
     copy(root.join("assets").join("icon.png"), "icon.png")?;
-    copy(root.parent().unwrap().join("LICENSE"), "LICENSE")?;
+    let license = root.join("LICENSE");
+    if license.is_file() {
+        copy(license, "LICENSE")?;
+    } else {
+        eprintln!("warning: no LICENSE file at the repository root, not packaging one");
+    }
     match openvr_lib {
         Some(lib) => copy(lib, OPENVR_LIB)?,
         None => {
