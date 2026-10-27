@@ -1,0 +1,18 @@
+[package]
+name = "psstates-osc"
+description = "OSC, OSCQuery and mDNS plumbing for talking to VRChat"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+psstates-core.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tokio.workspace = true
+rosc.workspace = true
+mdns-sd.workspace = true
+axum.workspace = true
+reqwest.workspace = true

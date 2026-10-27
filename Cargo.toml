@@ -1,0 +1,55 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/psstates-core",
+    "crates/psstates-osc",
+    "crates/psstates-service",
+    "crates/psstates-ui",
+    "crates/psstates-vr",
+    "crates/psstates-app",
+    "xtask",
+]
+default-members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.90"
+repository = "https://github.com/I5UCC/ParameterSaveStates"
+
+[workspace.dependencies]
+psstates-core = { path = "crates/psstates-core" }
+psstates-osc = { path = "crates/psstates-osc" }
+psstates-service = { path = "crates/psstates-service" }
+psstates-vr = { path = "crates/psstates-vr" }
+psstates-ui = { path = "crates/psstates-ui" }
+
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+directories = "6"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+tempfile = "3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
+rosc = "0.10"
+mdns-sd = "0.13"
+axum = { version = "0.8", default-features = false, features = ["tokio", "http1", "json"] }
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
+egui = "0.31"
+eframe = { version = "0.31", features = ["persistence"] }
+rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "tokio"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+# Linux uses the pure Rust StatusNotifierItem backend (no GTK needed).
+tray-icon = { version = "0.26", default-features = false, features = ["ksni"] }
+
+# The software overlay renderer is far too slow unoptimised.
+[profile.dev.package.psstates-vr]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+strip = true

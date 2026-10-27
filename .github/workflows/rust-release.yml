@@ -1,0 +1,94 @@
+name: Rust Release
+
+# Builds the Rust version for Windows and Linux and attaches it to a release.
+# Tags like "rust-v1.2.3" release the Rust app (the Unity workflow uses other tags).
+on:
+  push:
+    tags: ["rust-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  # OpenVR SDK matching the interface versions bound in psstates-vr.
+  OPENVR_SDK: v2.0.10
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            openvr_lib: bin/win64/openvr_api.dll
+          - os: ubuntu-22.04
+            openvr_lib: bin/linux64/libopenvr_api.so
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: rust
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/rust-v* ]]; then
+            echo "version=${GITHUB_REF_NAME#rust-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0-dev.${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch openvr_api
+        run: curl -fsSL -o "$RUNNER_TEMP/openvr_lib" "https://raw.githubusercontent.com/ValveSoftware/openvr/${OPENVR_SDK}/${{ matrix.openvr_lib }}"
+
+      - name: Build and package
+        env:
+          PSSTATES_VERSION: ${{ steps.version.outputs.version }}
+        run: cargo xtask package --openvr-lib "$RUNNER_TEMP/openvr_lib"
+
+      - name: Build installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.version.outputs.version }}" "/DSourceDir=$PWD\dist\windows" "/Odist" packaging\windows\installer.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ParameterSaveStates-${{ runner.os }}
+          path: |
+            rust/dist/*.zip
+            rust/dist/*.tar.gz
+            rust/dist/*.exe
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/rust-v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          prerelease: true
+          generate_release_notes: true

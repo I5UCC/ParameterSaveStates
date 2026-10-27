@@ -1,0 +1,30 @@
+[package]
+name = "psstates-vr"
+description = "Optional SteamVR (OpenVR) dashboard overlay for ParameterSaveStates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+psstates-service.workspace = true
+psstates-ui.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+egui.workspace = true
+image.workspace = true
+libloading = "0.8"
+
+# Overlay frames are handed to SteamVR as a GPU texture on Windows.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Direct3D",
+    "Win32_Graphics_Direct3D11",
+    "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common",
+] }
+
+[dev-dependencies]
+psstates-core.workspace = true
+tokio.workspace = true
+tempfile.workspace = true

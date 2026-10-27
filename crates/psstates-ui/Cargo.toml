@@ -1,0 +1,13 @@
+[package]
+name = "psstates-ui"
+description = "egui user interface for ParameterSaveStates (desktop window and VR overlay)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+psstates-core.workspace = true
+psstates-service.workspace = true
+egui.workspace = true
+rfd.workspace = true
+tracing.workspace = true

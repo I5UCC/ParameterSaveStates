@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Parameter Save States
+Comment=Save and restore VRChat avatar parameter profiles
+Exec=ParameterSaveStates
+Icon=parametersavestates
+Terminal=false
+Categories=Utility;Game;
+StartupWMClass=parametersavestates

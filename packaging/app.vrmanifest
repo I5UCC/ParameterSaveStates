@@ -1,0 +1,21 @@
+{
+	"source": "builtin",
+	"applications": [
+		{
+			"app_key": "i5ucc.parametersavestates",
+			"launch_type": "binary",
+			"binary_path_windows": "./ParameterSaveStates.exe",
+			"binary_path_linux": "./ParameterSaveStates",
+			"arguments": "--minimized",
+			"is_dashboard_overlay": true,
+			"image_path": "./icon.png",
+
+			"strings": {
+				"en_us": {
+					"name": "ParameterSaveStates",
+					"description": "ParameterSaveStates for VRChat Avatars"
+				}
+			}
+		}
+	]
+}

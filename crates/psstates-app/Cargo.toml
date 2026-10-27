@@ -1,0 +1,37 @@
+[package]
+name = "psstates-app"
+description = "ParameterSaveStates: save and restore VRChat avatar parameter profiles"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "ParameterSaveStates"
+path = "src/main.rs"
+
+[features]
+default = ["openvr"]
+# SteamVR dashboard overlay (openvr_api is loaded at runtime).
+openvr = ["dep:psstates-vr"]
+
+[dependencies]
+psstates-core.workspace = true
+psstates-service.workspace = true
+psstates-ui.workspace = true
+psstates-vr = { workspace = true, optional = true }
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tokio.workspace = true
+egui.workspace = true
+eframe.workspace = true
+rfd.workspace = true
+image.workspace = true
+tray-icon.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+] }
