@@ -37,7 +37,7 @@ impl MainUi {
             return;
         }
         egui::Area::new(egui::Id::new("toasts"))
-            .anchor(Align2::RIGHT_BOTTOM, egui::vec2(-12.0, -12.0))
+            .anchor(Align2::RIGHT_TOP, egui::vec2(-12.0, 12.0))
             .order(egui::Order::Foreground)
             .show(ctx, |ui| {
                 for t in &self.toasts {

@@ -80,7 +80,7 @@ pub fn apply_theme(ctx: &egui::Context, theme: psstates_core::Theme) {
     };
     visuals.selection.bg_fill = egui::Color32::from_rgb(37, 99, 235);
     // Light's default selection stroke is dark blue, which is unreadable on the blue fill.
-    visuals.selection.stroke = egui::Stroke::new(1.0, egui::Color32::WHITE);
+    visuals.selection.stroke = egui::Stroke::new(1.0_f32, egui::Color32::WHITE);
     ctx.set_visuals(visuals);
 }
 
