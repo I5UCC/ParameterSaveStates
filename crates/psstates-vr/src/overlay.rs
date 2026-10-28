@@ -467,10 +467,14 @@ impl Frontend {
         let ui = &mut self.ui;
         let output = self.ctx.run(input, |ctx| ui.show(ctx));
         if probing {
-            let copied = output.platform_output.commands.iter().find_map(|c| match c {
-                egui::OutputCommand::CopyText(text) => Some(text.clone()),
-                _ => None,
-            });
+            let copied = output
+                .platform_output
+                .commands
+                .iter()
+                .find_map(|c| match c {
+                    egui::OutputCommand::CopyText(text) => Some(text.clone()),
+                    _ => None,
+                });
             self.probe = Probe::Ready(copied.unwrap_or_default());
         }
         self.renderer.update_textures(&output.textures_delta);

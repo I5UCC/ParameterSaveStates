@@ -273,11 +273,7 @@ impl FixedEditor {
             let row_h = ui.spacing().interact_size.y;
             let value_width = 110.0;
             let type_width = 90.0;
-            let name_width = (ui.available_width()
-                - value_width
-                - type_width
-                - row_h * 2.0
-                - 40.0)
+            let name_width = (ui.available_width() - value_width - type_width - row_h * 2.0 - 40.0)
                 .clamp(200.0, 700.0);
             egui::Grid::new("fixed_rows")
                 .num_columns(4)
