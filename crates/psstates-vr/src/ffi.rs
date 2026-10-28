@@ -464,6 +464,18 @@ impl Session<'_> {
     }
 
     /// Uploads RGBA8 pixels (rows top to bottom).
+    pub fn set_overlay_from_file(&self, handle: OverlayHandle, path: &Path) -> Result<()> {
+        let path = cstring(&path.to_string_lossy());
+        let code = call!(
+            self.overlay,
+            61,
+            fn(u64, *const c_char) -> i32,
+            handle,
+            path.as_ptr()
+        );
+        check("SetOverlayFromFile", code)
+    }
+
     pub fn set_overlay_raw(
         &self,
         handle: OverlayHandle,

@@ -163,8 +163,24 @@ fn run_session(
     // A new overlay starts empty: whatever was uploaded before is gone.
     frontend.forget_upload();
     let mut uploader = Uploader::new(session, WIDTH, HEIGHT);
-    if let Some((mut rgba, w, h)) = thumbnail_rgba() {
-        warn_on_err(session.set_overlay_raw(thumb, &mut rgba, w, h));
+    // Prefer the icon file shipped next to the manifest (SteamVR loads it
+    // reliably); fall back to the embedded copy.
+    let icon_file = options
+        .manifest_path
+        .as_ref()
+        .and_then(|p| p.parent())
+        .map(|d| d.join("icon.png"))
+        .filter(|p| p.is_file());
+    let from_file = icon_file
+        .as_ref()
+        .map(|p| session.set_overlay_from_file(thumb, p));
+    if !matches!(from_file, Some(Ok(()))) {
+        if let Some(Err(e)) = from_file {
+            tracing::warn!("{e:#}");
+        }
+        if let Some((mut rgba, w, h)) = thumbnail_rgba() {
+            warn_on_err(session.set_overlay_raw(thumb, &mut rgba, w, h));
+        }
     }
 
     let auto_launch = register_app(session, options);
