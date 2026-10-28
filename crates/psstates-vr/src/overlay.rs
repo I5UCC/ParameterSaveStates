@@ -244,6 +244,16 @@ fn run_session(
     }
 }
 
+/// egui cannot be asked for a field's text directly, so the focused field is
+/// select-all + copied and the copied text is read from the frame output.
+enum Probe {
+    Idle,
+    /// Select-all + copy events are queued for the next frame.
+    Requested,
+    /// The field's current text.
+    Ready(String),
+}
+
 /// egui context + renderer + input translation for the overlay.
 struct Frontend {
     ui: MainUi,
@@ -256,6 +266,8 @@ struct Frontend {
     keyboard_open: bool,
     keyboard_target: Option<egui::Id>,
     pending_text: Option<String>,
+    /// Reading the focused field's text so the keyboard can start with it.
+    probe: Probe,
     /// The image SteamVR currently shows (empty = unknown, upload next frame).
     last_upload: Vec<u8>,
     /// Fixed clock for tests; `None` uses real time.
@@ -275,6 +287,7 @@ impl Frontend {
             keyboard_open: false,
             keyboard_target: None,
             pending_text: None,
+            probe: Probe::Idle,
             last_upload: Vec::new(),
             time_override: None,
         }
@@ -398,6 +411,19 @@ impl Frontend {
             }
             events.push(Event::Text(text.clone()));
         }
+        let probing = matches!(self.probe, Probe::Requested);
+        if probing {
+            for pressed in [true, false] {
+                events.push(Event::Key {
+                    key: Key::A,
+                    physical_key: None,
+                    pressed,
+                    repeat: false,
+                    modifiers: Modifiers::COMMAND,
+                });
+            }
+            events.push(Event::Copy);
+        }
 
         let mut input = egui::RawInput {
             screen_rect: Some(Rect::from_min_size(
@@ -424,6 +450,13 @@ impl Frontend {
 
         let ui = &mut self.ui;
         let output = self.ctx.run(input, |ctx| ui.show(ctx));
+        if probing {
+            let copied = output.platform_output.commands.iter().find_map(|c| match c {
+                egui::OutputCommand::CopyText(text) => Some(text.clone()),
+                _ => None,
+            });
+            self.probe = Probe::Ready(copied.unwrap_or_default());
+        }
         self.renderer.update_textures(&output.textures_delta);
         let primitives = self.ctx.tessellate(output.shapes, output.pixels_per_point);
         self.renderer.render(&primitives, output.pixels_per_point);
@@ -443,7 +476,15 @@ impl Frontend {
         let wants_keyboard = self.ctx.wants_keyboard_input();
         let focused = self.ctx.memory(|m| m.focused());
         if wants_keyboard && !self.keyboard_open && focused.is_some() {
-            match session.show_keyboard_for_overlay(overlay, "Enter text", "", 256) {
+            let existing = match std::mem::replace(&mut self.probe, Probe::Idle) {
+                Probe::Ready(text) => text,
+                _ => {
+                    self.probe = Probe::Requested;
+                    self.next_repaint = Some(Instant::now());
+                    return;
+                }
+            };
+            match session.show_keyboard_for_overlay(overlay, "Enter text", &existing, 256) {
                 Ok(()) => {
                     self.keyboard_open = true;
                     self.keyboard_target = focused;
@@ -455,10 +496,13 @@ impl Frontend {
                     self.release_focus();
                 }
             }
-        } else if !wants_keyboard && self.keyboard_open {
-            session.hide_keyboard();
-            self.keyboard_open = false;
-            self.keyboard_target = None;
+        } else if !wants_keyboard {
+            self.probe = Probe::Idle;
+            if self.keyboard_open {
+                session.hide_keyboard();
+                self.keyboard_open = false;
+                self.keyboard_target = None;
+            }
         }
     }
 }
